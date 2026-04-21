@@ -1,6 +1,5 @@
 # WildCard_FrontEnd
 
-clone后执行：
-cd wildcard-frontend
+git clone
 npm install
 npm run dev
