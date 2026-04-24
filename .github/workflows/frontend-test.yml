@@ -71,9 +71,4 @@ jobs:
           done
 
       - name: Run E2E tests
-        uses: cypress-io/github-action@v7
-        with:
-          install: false
-          start: npm run dev -- --host 127.0.0.1 --port 4173
-          wait-on: http://127.0.0.1:4173
-          browser: chrome
+        run: xvfb-run -a npm run test:e2e
