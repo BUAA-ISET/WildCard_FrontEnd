@@ -83,8 +83,16 @@ jobs:
 
       - name: Enable Cypress sandbox
         run: |
-          find "$HOME/.cache/Cypress" -path '*/Cypress/chrome-sandbox' -exec sudo chown root:root {} \;
-          find "$HOME/.cache/Cypress" -path '*/Cypress/chrome-sandbox' -exec sudo chmod 4755 {} \;
+          mapfile -t sandbox_paths < <(find "$HOME/.cache/Cypress" -path '*/Cypress/chrome-sandbox')
+          if [ "${#sandbox_paths[@]}" -eq 0 ]; then
+            echo "No chrome-sandbox found; continuing without sandbox patch."
+            exit 0
+          fi
+
+          for sandbox in "${sandbox_paths[@]}"; do
+            sudo chown root:root "$sandbox"
+            sudo chmod 4755 "$sandbox"
+          done
 
       - name: Run E2E tests
         run: npm run test:e2e
