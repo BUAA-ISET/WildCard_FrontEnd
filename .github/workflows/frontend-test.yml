@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       CYPRESS_INSTALL_BINARY: 0
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -66,6 +66,25 @@ jobs:
             echo "cypress install failed on attempt $attempt, retrying..."
             sleep 5
           done
+
+      - name: Install Cypress system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-0t64 \
+            libgbm-dev \
+            libnotify-dev \
+            libnss3 \
+            libxss1 \
+            libasound2t64 \
+            libxtst6 \
+            xauth \
+            xvfb
+
+      - name: Enable Cypress sandbox
+        run: |
+          find "$HOME/.cache/Cypress" -path '*/Cypress/chrome-sandbox' -exec sudo chown root:root {} \;
+          find "$HOME/.cache/Cypress" -path '*/Cypress/chrome-sandbox' -exec sudo chmod 4755 {} \;
 
       - name: Run E2E tests
         run: npm run test:e2e
