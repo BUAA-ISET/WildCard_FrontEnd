@@ -2,6 +2,11 @@
   <div class="main-layout">
     <header class="top-header">
       <div class="header-logo">WildCard</div>
+      <div class="header-nav">
+        <div class="top-nav-item" @click="handleTeamIntro">团队介绍</div>
+        <div class="top-nav-item" @click="handleContact">联系我们</div>
+        <div class="top-nav-item" @click="handleHelp">帮助中心</div>
+      </div>
     </header>
     <div class="main-body">
       <aside class="sidebar">
@@ -17,6 +22,18 @@
           <router-link to="/user-info" class="nav-item" exact-active-class="active">
             <el-icon><User /></el-icon>
             <span> 用户中心 </span>
+          </router-link>
+          <router-link to="/rule-market" class="nav-item" exact-active-class="active">
+            <el-icon><Shop /></el-icon>
+            <span> 规则市场 </span>
+          </router-link>
+          <router-link to="/card-style" class="nav-item" exact-active-class="active">
+            <el-icon><Brush /></el-icon>
+            <span> 卡牌样式 </span>
+          </router-link>
+          <router-link to="/battle" class="nav-item" exact-active-class="active">
+            <el-icon><VideoPlay /></el-icon>
+            <span> 对局界面 </span>
           </router-link>
         </nav>
         <div class="sidebar-bottom">
@@ -39,7 +56,26 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
+
+const handleTeamIntro = () => {
+  openRouteInNewWindow('/teaminfo/about');
+};
+
+const handleContact = () => {
+  openRouteInNewWindow('/teaminfo/contact');
+};
+
+const handleHelp = () => {
+  openRouteInNewWindow('/teaminfo/help');
+};
+
+const openRouteInNewWindow = (path: string) => {
+  const routeUrl = router.resolve(path).href;
+  window.open(routeUrl, '_blank', 'noopener,noreferrer');
+};
 </script>
 
 <style scoped>
@@ -62,7 +98,8 @@
   height: 64px;
   background: #fff;
   border-bottom: 1px solid #f5f6fa;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 70% 1fr;
   align-items: center;
   padding: 0 32px;
   flex-shrink: 0;
@@ -73,6 +110,29 @@
   font-size: 1.4rem;
   font-weight: bold;
   color: #444;
+  grid-column: 1;
+  text-align: left;
+}
+
+.header-nav {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 24px;
+  grid-column: 2;
+}
+
+.top-nav-item {
+  text-align: center;
+  font-size: 1.05rem;
+  border-radius: 8px;
+  padding: 8px 16px;
+}
+
+.top-nav-item:hover {
+  background: #ece6fa;
+  color: #333;
+  cursor: pointer;
 }
 
 .main-body {
