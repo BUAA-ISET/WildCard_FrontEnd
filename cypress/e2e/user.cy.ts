@@ -1,10 +1,12 @@
 /// <reference types="cypress" />
 
 describe('user shell', () => {
-  it('renders the application shell and starter heading', () => {
+  it('renders the application shell and home entry actions', () => {
     cy.visit('/')
 
     cy.get('[data-testid="app-shell"]').should('exist')
-    cy.contains('h1', 'Get started').should('be.visible')
+    cy.contains('WildCard').should('be.visible')
+    cy.contains('button', 'CREATE ROOM').should('be.visible')
+    cy.contains('button', 'JOIN ROOM').should('be.visible')
   })
 })
