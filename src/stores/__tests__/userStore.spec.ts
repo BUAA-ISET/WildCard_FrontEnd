@@ -11,13 +11,26 @@ describe('userStore', () => {
     const store = useUserStore()
 
     const result = await store.login({
-      email: 'test@test.com',
-      password: 'password',
+      email: '  test@test.com  ',
+      password: '  password  ',
     })
 
     expect(result).toBe(true)
     expect(store.isLoggedIn).toBe(true)
     expect(store.email).toBe('test@test.com')
+  })
+
+  it('rejects empty credentials without mutating state', async () => {
+    const store = useUserStore()
+
+    const result = await store.login({
+      email: '   ',
+      password: '   ',
+    })
+
+    expect(result).toBe(false)
+    expect(store.isLoggedIn).toBe(false)
+    expect(store.email).toBe('')
   })
 
   it('resets state on logout', async () => {

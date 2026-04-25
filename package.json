@@ -10,7 +10,7 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "start-server-and-test \"vite --host 127.0.0.1 --port 4173\" http://127.0.0.1:4173 \"cypress run --browser electron\"",
+    "test:e2e": "start-server-and-test \"VITE_ENABLE_TEST_SANDBOX=true npm run build && vite preview --host 127.0.0.1 --port 4173\" http://127.0.0.1:4173 \"cypress run --browser electron\"",
     "test:e2e:open": "cypress open"
   },
   "dependencies": {

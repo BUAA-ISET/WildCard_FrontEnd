@@ -1,3 +1,5 @@
+/// <reference types="cypress" />
+
 describe('user shell', () => {
   it('renders the application shell and starter heading', () => {
     cy.visit('/')

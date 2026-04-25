@@ -1,3 +1,5 @@
+/// <reference types="cypress" />
+
 describe('room sandbox', () => {
   it('allows the create room button to enable after typing', () => {
     cy.visit('/')

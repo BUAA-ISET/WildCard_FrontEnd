@@ -12,11 +12,14 @@ export const useUserStore = defineStore('user', {
   }),
   actions: {
     async login({ email, password }: Credentials) {
-      if (!email.trim() || !password.trim()) {
+      const trimmedEmail = email.trim()
+      const trimmedPassword = password.trim()
+
+      if (!trimmedEmail || !trimmedPassword) {
         return false
       }
 
-      this.email = email
+      this.email = trimmedEmail
       this.isLoggedIn = true
       return true
     },
