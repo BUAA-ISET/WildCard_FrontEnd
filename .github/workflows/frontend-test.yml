@@ -13,7 +13,6 @@ jobs:
       image: cypress/browsers:22.15.0
       options: --user 1001
     env:
-      CYPRESS_INSTALL_BINARY: 0
       CYPRESS_CACHE_FOLDER: ${{ github.workspace }}/.cache/Cypress
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
@@ -71,6 +70,11 @@ jobs:
             echo "cypress install failed on attempt $attempt, retrying..."
             sleep 5
           done
+
+      - name: Check Cypress binary
+        run: |
+          npx cypress cache path
+          npx cypress cache list
 
       - name: Run E2E tests
         run: |
