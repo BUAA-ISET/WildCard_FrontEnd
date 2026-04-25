@@ -72,9 +72,6 @@ jobs:
             sleep 5
           done
 
-      - name: Verify Cypress binary
-        run: npx cypress verify
-
       - name: Run E2E tests
         run: |
           Xvfb :99 -screen 0 1280x1024x24 >/tmp/xvfb.log 2>&1 &
