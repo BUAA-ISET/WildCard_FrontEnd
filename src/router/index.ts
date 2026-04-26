@@ -6,6 +6,8 @@ import About from '../views/About.vue'
 import CardStyleView from '../views/CardStyleView.vue'
 import BattleView from '../views/BattleView.vue'
 import UserView from '../views/UserView.vue'
+import JoinRoomView from '../views/JoinRoomView.vue'
+import CreateRoomView from '../views/CreateRoomView.vue'
 
 
 const routes = [
@@ -47,11 +49,11 @@ const routes = [
       },
       {
         path: 'create-room',
-        component: { template: '<div>Create Room</div>' }
+        component: CreateRoomView
       },
       {
         path: 'join-room',
-        component: { template: '<div>Join Room</div>' }
+          component: JoinRoomView
       },
     ]
   },
