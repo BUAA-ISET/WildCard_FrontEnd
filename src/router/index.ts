@@ -5,6 +5,7 @@ import HomeView from '../views/HomeView.vue'
 import About from '../views/About.vue'
 import CardStyleView from '../views/CardStyleView.vue'
 import BattleView from '../views/BattleView.vue'
+import UserView from '../views/UserView.vue'
 
 
 const routes = [
@@ -38,7 +39,7 @@ const routes = [
       },
       {
         path: 'user-info',
-        component: { template: '<div>User Info</div>' }
+        component: UserView
       },
       {
         path: 'admin-panel',
