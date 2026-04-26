@@ -3,7 +3,7 @@
     <div class="join-room-center">
       <h1 class="join-room-title">Join Room</h1>
       <div class="join-room-card">
-        <div class="join-room-label">{{ showPassword ? 'Password' : 'Room Code' }}</div>
+        <div class="join-room-label">{{ showPassword ? '密码' : '房间号' }}</div>
         <el-input
             v-if="!showPassword"
             v-model="roomCode"
@@ -19,7 +19,7 @@
             type="password"
             @keyup.enter="onJoin"
         />
-        <el-button class="join-room-btn" size="medium" @click="showPassword ? onJoin() : onRoomCodeInput()">Join</el-button>
+        <el-button class="join-room-btn" size="medium" @click="showPassword ? onJoin() : onRoomCodeInput()">加入房间</el-button>
       </div>
     </div>
   </div>
