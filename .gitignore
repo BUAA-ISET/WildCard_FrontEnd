@@ -24,3 +24,5 @@ cypress/videos
 *.njsproj
 *.sln
 *.sw?
+
+docs

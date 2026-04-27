@@ -18,11 +18,7 @@ const canCreate = computed(() => roomName.value.trim().length > 0)
         placeholder="Enter room name"
         type="text"
       />
-      <button
-        :disabled="!canCreate"
-        data-testid="room-create-button"
-        type="button"
-      >
+      <button :disabled="!canCreate" data-testid="room-create-button" type="button">
         Create Room
       </button>
     </form>

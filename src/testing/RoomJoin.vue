@@ -18,11 +18,7 @@ const canJoin = computed(() => roomCode.value.trim().length >= 4)
         placeholder="Enter room code"
         type="text"
       />
-      <button
-        :disabled="!canJoin"
-        data-testid="room-join-button"
-        type="button"
-      >
+      <button :disabled="!canJoin" data-testid="room-join-button" type="button">
         Join Room
       </button>
     </form>
