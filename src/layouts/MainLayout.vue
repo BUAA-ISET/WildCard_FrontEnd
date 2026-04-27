@@ -1,5 +1,5 @@
 <template>
-  <div class="main-layout">
+  <div class="main-layout" data-testid="app-shell">
     <header class="top-header">
       <div class="header-logo">WildCard</div>
       <div class="header-nav">

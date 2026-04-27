@@ -197,10 +197,6 @@ async function onUpdatePassword() {
 		ElMessage.error(result.message || '更新失败')
 	}
 }
-
-function onUpdateAvatar() {
-	ElMessage.info('更换头像功能待实现')
-}
 </script>
 
 <style scoped>
