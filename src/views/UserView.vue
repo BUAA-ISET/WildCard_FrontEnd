@@ -73,6 +73,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
+import { userApi } from '../api/user'
 
 const defaultAvatar = 'https://www.gravatar.com/avatar/?d=mp&s=120'
 
@@ -103,18 +104,23 @@ const registerForm = reactive({
 	confirm: '',
 })
 
-function onLogin() {
+async function onLogin() {
 	if (!loginForm.email || !loginForm.password) {
 		ElMessage.error('请输入邮箱和密码')
 		return
 	}
-	// Mock login
-	user.username = loginForm.email
-	isLoggedIn.value = true
-	ElMessage.success('登录成功')
+	const result = await userApi.login({ email: loginForm.email, password: loginForm.password })
+	if (result.success && result.data) {
+		user.username = result.data.username
+		user.avatar = result.data.avatar
+		isLoggedIn.value = true
+		ElMessage.success('登录成功')
+	} else {
+		ElMessage.error(result.message || '登录失败')
+	}
 }
 
-function onRegister() {
+async function onRegister() {
 	if (!registerForm.email || !registerForm.username || !registerForm.password) {
 		ElMessage.error('请填写所有字段')
 		return
@@ -123,13 +129,23 @@ function onRegister() {
 		ElMessage.error('两次输入的密码不一致')
 		return
 	}
-	// Mock register
-	user.username = registerForm.username
-	isLoggedIn.value = true
-	ElMessage.success('注册成功')
+	const result = await userApi.register({ 
+		email: registerForm.email, 
+		password: registerForm.password,
+		username: registerForm.username 
+	})
+	if (result.success && result.data) {
+		user.username = result.data.username
+		user.avatar = result.data.avatar
+		isLoggedIn.value = true
+		ElMessage.success('注册成功')
+	} else {
+		ElMessage.error(result.message || '注册失败')
+	}
 }
 
-function onLogout() {
+async function onLogout() {
+	await userApi.logout()
 	isLoggedIn.value = false
 	loginForm.email = ''
 	loginForm.password = ''
@@ -145,16 +161,21 @@ function toggleLoginState() {
 	}
 }
 
-function onUpdateUsername() {
+async function onUpdateUsername() {
 	if (!userForm.username) {
 		ElMessage.error('用户名不能为空')
 		return
 	}
-	user.username = userForm.username
-	ElMessage.success('用户名已更新')
+	const result = await userApi.updateUsername(userForm.username)
+	if (result.success && result.data) {
+		user.username = result.data.username
+		ElMessage.success('用户名已更新')
+	} else {
+		ElMessage.error(result.message || '更新失败')
+	}
 }
 
-function onUpdatePassword() {
+async function onUpdatePassword() {
 	if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
 		ElMessage.error('请填写所有密码字段')
 		return
@@ -163,11 +184,18 @@ function onUpdatePassword() {
 		ElMessage.error('新密码两次输入不一致')
 		return
 	}
-	// Mock password update
-	passwordForm.current = ''
-	passwordForm.new = ''
-	passwordForm.confirm = ''
-	ElMessage.success('密码已更新')
+	const result = await userApi.updatePassword({ 
+		currentPassword: passwordForm.current, 
+		newPassword: passwordForm.new 
+	})
+	if (result.success) {
+		passwordForm.current = ''
+		passwordForm.new = ''
+		passwordForm.confirm = ''
+		ElMessage.success(result.message || '密码已更新')
+	} else {
+		ElMessage.error(result.message || '更新失败')
+	}
 }
 
 function onUpdateAvatar() {
