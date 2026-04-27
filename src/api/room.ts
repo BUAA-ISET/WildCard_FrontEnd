@@ -1,9 +1,14 @@
+import { apiPost, apiGet } from './request'
+import { API_CONFIG } from './config'
+
 export interface Room {
     id: string
     code: string
     hostId: string
     playerCount: number
     roundTime: number
+    ruleId: string
+    ruleName: string
     password: string | null
     players: Player[]
     status: 'waiting' | 'playing' | 'finished'
@@ -17,7 +22,7 @@ export interface Player {
 }
 
 export interface CreateRoomParams {
-    playerCount: number
+    ruleId: string
     roundTime: number
     password?: string
 }
@@ -27,6 +32,28 @@ export interface JoinRoomParams {
     password?: string
 }
 
+export interface GameRuleOption {
+    id: string
+    name: string
+    playerCount: number
+    description?: string
+}
+
+const mockRuleOptions: GameRuleOption[] = [
+    {
+        id: 'classic',
+        name: 'Classic Rules',
+        playerCount: 4,
+        description: '4 players, standard wildcard flow.',
+    },
+    {
+        id: 'party',
+        name: 'Party Rules',
+        playerCount: 6,
+        description: '6 players, faster and more chaotic.',
+    },
+]
+
 const mockRooms: Record<string, Room> = {
     '123456': {
         id: '1',
@@ -34,9 +61,11 @@ const mockRooms: Record<string, Room> = {
         hostId: 'host1',
         playerCount: 4,
         roundTime: 30,
+        ruleId: 'classic',
+        ruleName: 'Classic Rules',
         password: 'abc123',
         players: [
-        { id: 'host1', username: 'HostPlayer', avatar: '', isReady: true },
+            { id: 'host1', username: 'HostPlayer', avatar: '', isReady: true },
         ],
         status: 'waiting',
     },
@@ -49,74 +78,100 @@ function generateRoomCode(): string {
 }
 
 export const roomApi = {
+    async getRuleOptions(): Promise<{ success: boolean; data?: GameRuleOption[]; message?: string }> {
+        return apiGet(API_CONFIG.endpoints.room.rules, {
+            mockDelay: 200,
+            mockFn: () => {
+                return { success: true, data: mockRuleOptions }
+            }
+        })
+    },
+
     async createRoom(params: CreateRoomParams): Promise<{ success: boolean; data?: Room; message?: string }> {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        const newRoom: Room = {
-        id: Math.random().toString(36).substr(2, 9),
-        code: generateRoomCode(),
-        hostId: 'currentUser',
-        playerCount: params.playerCount,
-        roundTime: params.roundTime,
-        password: params.password || null,
-        players: [
-            { id: 'currentUser', username: 'You', avatar: '', isReady: true },
-        ],
-        status: 'waiting',
-        }
-        
-        mockRooms[newRoom.code] = newRoom
-        currentRoom = newRoom
-        
-        return { success: true, data: newRoom }
+        return apiPost(API_CONFIG.endpoints.room.create, params, {
+            mockDelay: 500,
+            mockFn: () => {
+                const selectedRule = mockRuleOptions.find(rule => rule.id === params.ruleId)
+                if (!selectedRule) {
+                    return { success: false, message: 'Invalid room rule.' }
+                }
+
+                const newRoom: Room = {
+                    id: Math.random().toString(36).substring(2, 9),
+                    code: generateRoomCode(),
+                    hostId: 'currentUser',
+                    playerCount: selectedRule.playerCount,
+                    roundTime: params.roundTime,
+                    ruleId: selectedRule.id,
+                    ruleName: selectedRule.name,
+                    password: params.password || null,
+                    players: [
+                        { id: 'currentUser', username: 'You', avatar: '', isReady: true },
+                    ],
+                    status: 'waiting',
+                }
+                mockRooms[newRoom.code] = newRoom
+                currentRoom = newRoom
+                return { success: true, data: newRoom }
+            }
+        })
     },
 
     async joinRoom(params: JoinRoomParams): Promise<{ success: boolean; data?: Room; message?: string }> {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        const room = mockRooms[params.code]
-        
-        if (!room) {
-            return { success: false, message: '房间不存在' }
-        }
-        
-        if (room.password && room.password !== params.password) {
-            return { success: false, message: '密码错误' }
-        }
-        
-        if (room.players.length >= room.playerCount) {
-            return { success: false, message: '房间已满' }
-        }
-        
-        room.players.push({
-            id: 'currentUser',
-            username: 'You',
-            avatar: '',
-            isReady: false,
+        return apiPost(API_CONFIG.endpoints.room.join, params, {
+            mockDelay: 500,
+            mockFn: () => {
+                const room = mockRooms[params.code]
+                if (!room) {
+                    return { success: false, message: '房间不存在' }
+                }
+                if (room.password && room.password !== params.password) {
+                    return { success: false, message: '密码错误' }
+                }
+                if (room.players.length >= room.playerCount) {
+                    return { success: false, message: '房间已满' }
+                }
+                room.players.push({
+                    id: 'currentUser',
+                    username: 'You',
+                    avatar: '',
+                    isReady: false,
+                })
+                currentRoom = room
+                return { success: true, data: room }
+            }
         })
-        
-        currentRoom = room
-        return { success: true, data: room }
     },
 
     async checkRoomPassword(code: string): Promise<{ success: boolean; hasPassword: boolean }> {
-        await new Promise(resolve => setTimeout(resolve, 200))
-        
-        const room = mockRooms[code]
-        if (room) {
-            return { success: true, hasPassword: !!room.password }
-        }
-            return { success: false, hasPassword: false }
+        return apiGet(API_CONFIG.endpoints.room.checkPassword + `?code=${code}`, {
+            mockDelay: 200,
+            mockFn: () => {
+                const room = mockRooms[code]
+                if (room) {
+                    return { success: true, hasPassword: !!room.password }
+                }
+                return { success: false, hasPassword: false }
+            }
+        })
     },
 
     async getCurrentRoom(): Promise<{ success: boolean; data?: Room | null }> {
-        await new Promise(resolve => setTimeout(resolve, 200))
-        return { success: true, data: currentRoom }
+        return apiGet(API_CONFIG.endpoints.room.getCurrent, {
+            mockDelay: 200,
+            mockFn: () => {
+                return { success: true, data: currentRoom }
+            }
+        })
     },
 
     async leaveRoom(): Promise<{ success: boolean }> {
-        await new Promise(resolve => setTimeout(resolve, 200))
-        currentRoom = null
-        return { success: true }
+        return apiPost(API_CONFIG.endpoints.room.leave, {}, {
+            mockDelay: 200,
+            mockFn: () => {
+                currentRoom = null
+                return { success: true }
+            }
+        })
     },
 }
