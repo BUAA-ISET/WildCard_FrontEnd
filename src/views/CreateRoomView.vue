@@ -39,21 +39,27 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { roomApi } from '../api/room'
 
 const router = useRouter()
 const playerCount = ref(4)
 const roundTime = ref(30)
 const roomPassword = ref('')
 
-function onCreateRoom() {
-  const roomSettings = {
+async function onCreateRoom() {
+  const result = await roomApi.createRoom({
     playerCount: playerCount.value,
     roundTime: roundTime.value,
-    password: roomPassword.value || null,
+    password: roomPassword.value || undefined,
+  })
+  
+  if (result.success && result.data) {
+    ElMessage.success(`房间创建成功！房间码：${result.data.code}`)
+    sessionStorage.setItem('currentRoomCode', result.data.code)
+    router.push(`/game/${result.data.code}`)
+  } else {
+    ElMessage.error(result.message || '创建房间失败')
   }
-  console.log('Creating room with settings:', roomSettings)
-  ElMessage.success('房间创建成功')
-  router.push('/battle')
 }
 </script>
 
