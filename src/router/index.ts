@@ -53,8 +53,12 @@ const routes = [
       },
       {
         path: 'join-room',
-          component: JoinRoomView
+        component: JoinRoomView
       },
+      {
+        path: '/game/:roomCode',
+        component: BattleView
+      }
     ]
   },
   {

@@ -29,39 +29,56 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { roomApi } from '../api/room'
 
 const router = useRouter()
 const roomCode = ref('')
 const roomPassword = ref('')
 const showPassword = ref(false)
 
-const roomsWithPassword: Record<string, string> = {
-  '123456': 'abc123',
+async function onRoomCodeInput() {
+    if (!roomCode.value) {
+        ElMessage.error('请输入房间号')
+        return
+    }
+
+    const result = await roomApi.checkRoomPassword(roomCode.value)
+    if (result.success && result.hasPassword) {
+        showPassword.value = true
+        roomPassword.value = ''
+    } else if (result.success) {
+        await joinRoomWithoutPassword()
+    } else {
+        ElMessage.error('房间不存在')
+    }
 }
 
-function onRoomCodeInput() {
-  if (!roomCode.value) {
-    ElMessage.error('请输入房间号')
-    return
-  }
-  if (roomsWithPassword[roomCode.value]) {
-    showPassword.value = true
-    roomPassword.value = ''
-  } else {
-    router.push('/battle')
-  }
+async function joinRoomWithoutPassword() {
+    const result = await roomApi.joinRoom({ code: roomCode.value })
+    if (result.success && result.data) {
+        sessionStorage.setItem('currentRoomCode', result.data.code)
+        router.push(`/game/${roomCode.value}`)
+    } else {
+        ElMessage.error(result.message || '加入房间失败')
+    }
 }
 
-function onJoin() {
-  if (!roomPassword.value) {
-    ElMessage.error('该房间需要输入密码')
-    return
-  }
-  if (roomPassword.value !== roomsWithPassword[roomCode.value]) {
-    ElMessage.error('密码错误')
-    return
-  }
-  router.push('/battle')
+async function onJoin() {
+    if (!roomPassword.value) {
+        ElMessage.error('请输入密码')
+        return
+    }
+
+    const result = await roomApi.joinRoom({ 
+        code: roomCode.value, 
+        password: roomPassword.value 
+    })
+    if (result.success && result.data) {
+        sessionStorage.setItem('currentRoomCode', result.data.code)
+        router.push(`/game/${roomCode.value}`)
+    } else {
+        ElMessage.error(result.message || '密码错误')
+    }
 }
 </script>
 
