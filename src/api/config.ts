@@ -7,6 +7,7 @@ export const API_CONFIG = {
         user: {
             login: '/api/user/login',
             register: '/api/user/register',
+            sendVerificationCode: '/api/user/send-code',
             logout: '/api/user/logout',
             current: '/api/user/current',
             updateUsername: '/api/user/username',

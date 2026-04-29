@@ -42,13 +42,23 @@ export async function apiRequest<T = any>(
     const url = getApiUrl(endpoint)
     const response = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
             'Content-Type': 'application/json',
         },
         body: body ? JSON.stringify(body) : undefined,
     })
 
-    return response.json()
+    const result = await response.json()
+
+    if (!response.ok && typeof result === 'object' && result !== null) {
+        return {
+            success: false,
+            message: (result as { message?: string }).message || `Request failed with status ${response.status}`
+        } as T
+    }
+
+    return result
 }
 
 export async function apiGet<T = any>(
