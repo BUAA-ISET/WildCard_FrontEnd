@@ -2,7 +2,7 @@ name: frontend-test
 
 on:
   push:
-    branches: [dev, test/work]
+    branches: [dev, 'test/**']
   pull_request:
     branches: [dev]
 
