@@ -13,35 +13,35 @@
         <nav class="nav">
           <router-link to="/" class="nav-item" exact-active-class="active">
             <el-icon><House /></el-icon>
-            <span> 首页 </span>
+            <span>首页</span>
           </router-link>
           <router-link to="/creation-center" class="nav-item" exact-active-class="active">
             <el-icon><EditPen /></el-icon>
-            <span> 创作中心 </span>
+            <span>创作中心</span>
           </router-link>
           <router-link to="/user-info" class="nav-item" exact-active-class="active">
             <el-icon><User /></el-icon>
-            <span> 用户中心 </span>
+            <span>用户中心</span>
           </router-link>
           <router-link to="/rule-market" class="nav-item" exact-active-class="active">
             <el-icon><Shop /></el-icon>
-            <span> 规则市场 </span>
+            <span>规则市场</span>
           </router-link>
           <router-link to="/card-style" class="nav-item" exact-active-class="active">
             <el-icon><Brush /></el-icon>
-            <span> 卡牌样式 </span>
+            <span>卡牌样式</span>
           </router-link>
           <router-link to="/battle" class="nav-item" exact-active-class="active">
             <el-icon><VideoPlay /></el-icon>
-            <span> 对局界面 </span>
+            <span>对局界面</span>
           </router-link>
         </nav>
         <div class="sidebar-bottom">
           <div class="user-avatar">
-            <span class="avatar-circle">U</span>
-            <div>
-              <div class="username">Username</div>
-              <div class="user-desc">Default Account</div>
+            <img :src="displayAvatar" :alt="displayUsername" class="avatar-circle" />
+            <div class="user-meta">
+              <div class="username">{{ displayUsername }}</div>
+              <div class="user-email">{{ displayEmail }}</div>
             </div>
           </div>
         </div>
@@ -56,26 +56,36 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
+import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '../stores/userStore'
 
-const router = useRouter();
+const router = useRouter()
+const userStore = useUserStore()
+const { username, email, avatar } = storeToRefs(userStore)
+const defaultAvatar = 'https://www.gravatar.com/avatar/?d=mp&s=120'
+
+const displayAvatar = computed(() => avatar.value || defaultAvatar)
+const displayUsername = computed(() => username.value || '未登录')
+const displayEmail = computed(() => email.value || 'not logged in')
 
 const handleTeamIntro = () => {
-  openRouteInNewWindow('/teaminfo/about');
-};
+  openRouteInNewWindow('/teaminfo/about')
+}
 
 const handleContact = () => {
-  openRouteInNewWindow('/teaminfo/contact');
-};
+  openRouteInNewWindow('/teaminfo/contact')
+}
 
 const handleHelp = () => {
-  openRouteInNewWindow('/teaminfo/help');
-};
+  openRouteInNewWindow('/teaminfo/help')
+}
 
 const openRouteInNewWindow = (path: string) => {
-  const routeUrl = router.resolve(path).href;
-  window.open(routeUrl, '_blank', 'noopener,noreferrer');
-};
+  const routeUrl = router.resolve(path).href
+  window.open(routeUrl, '_blank', 'noopener,noreferrer')
+}
 </script>
 
 <style scoped>
@@ -179,19 +189,26 @@ const openRouteInNewWindow = (path: string) => {
 }
 
 .sidebar-bottom {
-  padding: 16px 24px;
+  padding: 16px 20px 20px;
   flex-shrink: 0;
 }
 
 .user-avatar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   background: #fff;
-  border-radius: 12px;
-  border: 1px solid #d4d4d4;
-  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid #cfcfcf;
+  padding: 12px 14px;
   text-align: left;
+  width: 100%;
+  min-width: 0;
+}
+
+.user-meta {
+  min-width: 0;
+  flex: 1;
 }
 
 .avatar-circle {
@@ -199,22 +216,24 @@ const openRouteInNewWindow = (path: string) => {
   height: 42px;
   background: #999;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: #fff;
+  display: block;
+  object-fit: cover;
 }
 
 .username {
-  font-weight: bold;
-  color: #333;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #1f1f1f;
+  line-height: 1.3;
+  margin-bottom: 4px;
+  word-break: break-word;
 }
 
-.user-desc {
+.user-email {
   font-size: 0.8rem;
   color: #666;
+  line-height: 1.35;
+  word-break: break-all;
 }
 
 .main-content {
