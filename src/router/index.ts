@@ -8,6 +8,7 @@ import BattleView from '../views/BattleView.vue'
 import UserView from '../views/UserView.vue'
 import JoinRoomView from '../views/JoinRoomView.vue'
 import CreateRoomView from '../views/CreateRoomView.vue'
+import RuleBuilderView from '../views/RuleBuilderView.vue'
 
 
 const routes = [
@@ -33,7 +34,7 @@ const routes = [
       },
       {
         path: 'creation-center',
-        component: { template: '<div>Creation Center</div>' }
+        component: RuleBuilderView
       },
       {
         path: 'match-history',

@@ -151,6 +151,7 @@ const openRouteInNewWindow = (path: string) => {
   flex-direction: column;
   flex-shrink: 0;
   overflow: hidden;
+  border-right: #ab99af solid 2px;
 }
 
 .nav {
