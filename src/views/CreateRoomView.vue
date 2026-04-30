@@ -3,24 +3,34 @@
     <div class="create-room-center">
       <h1 class="create-room-title">Create Room</h1>
       <div class="create-room-card">
-        <div class="create-room-label">房间设置</div>
-        
+        <div class="create-room-label">Room Settings</div>
+
         <div class="form-item">
-          <div class="form-label">玩家人数</div>
-          <el-select v-model="playerCount" placeholder="Select" class="form-select">
-            <el-option v-for="n in 8" :key="n" :label="n" :value="n" />
+          <div class="form-label">Game Rules</div>
+          <el-select
+            v-model="selectedRuleId"
+            placeholder="Select game rule"
+            class="form-select"
+            :loading="rulesLoading"
+          >
+            <el-option
+              v-for="rule in ruleOptions"
+              :key="rule.id"
+              :label="`${rule.name} (${rule.playerCount} players)`"
+              :value="rule.id"
+            />
           </el-select>
         </div>
-        
+
         <div class="form-item">
-          <div class="form-label">出牌时间(秒)</div>
+          <div class="form-label">Round Time (seconds)</div>
           <el-select v-model="roundTime" placeholder="Select" class="form-select">
             <el-option v-for="t in [10, 15, 20, 30, 45, 60]" :key="t" :label="t" :value="t" />
           </el-select>
         </div>
-        
+
         <div class="form-item">
-          <div class="form-label">房间密码(可选)</div>
+          <div class="form-label">Room Password (optional)</div>
           <el-input
             v-model="roomPassword"
             placeholder="Enter password or leave empty"
@@ -28,32 +38,60 @@
             type="password"
           />
         </div>
-        
-        <el-button class="create-room-btn" size="medium" @click="onCreateRoom">创建</el-button>
+
+        <el-button class="create-room-btn" size="medium" @click="onCreateRoom">Create Room</el-button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { roomApi } from '../api/room'
+import type { GameRuleOption } from '../api/room'
 
 const router = useRouter()
-const playerCount = ref(4)
 const roundTime = ref(30)
 const roomPassword = ref('')
+const ruleOptions = ref<GameRuleOption[]>([])
+const selectedRuleId = ref('')
+const rulesLoading = ref(false)
 
-function onCreateRoom() {
-  const roomSettings = {
-    playerCount: playerCount.value,
-    roundTime: roundTime.value,
-    password: roomPassword.value || null,
+onMounted(async () => {
+  rulesLoading.value = true
+  const result = await roomApi.getRuleOptions()
+  rulesLoading.value = false
+
+  if (result.success && result.data && result.data.length > 0) {
+    ruleOptions.value = result.data
+    selectedRuleId.value = result.data[0].id
+    return
   }
-  console.log('Creating room with settings:', roomSettings)
-  ElMessage.success('房间创建成功')
-  router.push('/battle')
+
+  ElMessage.error(result.message || 'Failed to load game rules')
+})
+
+async function onCreateRoom() {
+  if (!selectedRuleId.value) {
+    ElMessage.error('Please select a game rule')
+    return
+  }
+
+  const result = await roomApi.createRoom({
+    ruleId: selectedRuleId.value,
+    roundTime: roundTime.value,
+    password: roomPassword.value || undefined,
+  })
+
+  if (result.success && result.data) {
+    ElMessage.success(`Room created successfully. Code: ${result.data.code}`)
+    sessionStorage.setItem('currentRoomCode', result.data.code)
+    router.push(`/game/${result.data.code}`)
+  } else {
+    ElMessage.error(result.message || 'Failed to create room')
+  }
 }
 </script>
 

@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "start-server-and-test \"VITE_ENABLE_TEST_SANDBOX=true npm run build && vite preview --host 127.0.0.1 --port 4173\" http://127.0.0.1:4173 \"cypress run --browser electron\"",
+    "test:e2e:open": "cypress open"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
@@ -25,11 +30,17 @@
     "@types/node": "^24.12.2",
     "@vitejs/plugin-vue": "^6.0.6",
     "@vue/tsconfig": "^0.9.1",
+    "@vue/test-utils": "^2.4.6",
+    "@vitest/coverage-v8": "^3.2.4",
     "autoprefixer": "^10.5.0",
+    "cypress": "^14.5.4",
+    "happy-dom": "^18.0.1",
     "postcss": "^8.5.10",
+    "start-server-and-test": "^2.0.10",
     "tailwindcss": "^4.2.3",
-    "typescript": "~5.8.0",
+    "typescript": "~5.8.3",
     "vite": "^8.0.9",
+    "vitest": "^3.2.4",
     "vue-tsc": "^3.2.7"
   }
 }

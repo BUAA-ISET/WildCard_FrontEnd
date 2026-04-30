@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
 import InfoLayout from '../layouts/InfoLayout.vue'
 import HomeView from '../views/HomeView.vue'
@@ -11,7 +11,7 @@ import CreateRoomView from '../views/CreateRoomView.vue'
 import RuleBuilderView from '../views/RuleBuilderView.vue'
 
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: "/",
     component: MainLayout,
@@ -54,8 +54,12 @@ const routes = [
       },
       {
         path: 'join-room',
-          component: JoinRoomView
+        component: JoinRoomView
       },
+      {
+        path: '/game/:roomCode',
+        component: BattleView
+      }
     ]
   },
   {
@@ -77,6 +81,13 @@ const routes = [
     ]
   }
 ]
+
+if (import.meta.env.VITE_ENABLE_TEST_SANDBOX === 'true') {
+  routes.push({
+    path: '/__test__/room-sandbox',
+    component: () => import('../testing/TestingSandboxView.vue'),
+  })
+}
 
 const router = createRouter({
   history: createWebHistory(),
