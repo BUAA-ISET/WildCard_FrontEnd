@@ -2,7 +2,15 @@
 
 describe('用户认证测试', () => {
   beforeEach(() => {
+    cy.clearCookies()
+    cy.clearLocalStorage()
+    cy.intercept('https://www.gravatar.com/**', { statusCode: 200, body: '', headers: { 'Content-Type': 'image/png' } })
     cy.visit('/user-info', { timeout: 60000 })
+  })
+
+  afterEach(() => {
+    cy.clearCookies()
+    cy.clearLocalStorage()
   })
 
   describe('登录/注册界面渲染', () => {
@@ -19,14 +27,34 @@ describe('用户认证测试', () => {
       cy.contains('注册').click()
       cy.get('.el-tabs__item').contains('注册').should('have.class', 'is-active')
     })
+  })
 
-    it('登录表单显示邮箱和密码输入框', () => {
-      cy.get('input[type="password"]').should('exist')
+  describe('Mock模式登录功能', () => {
+    it('使用mock账户登录成功', () => {
+      cy.get('input[placeholder="example@mail.com"]').first().clear().type('test@mail.com')
+      cy.get('input[type="password"]').first().clear().type('password123')
+      cy.contains('button', '登录').click()
+      cy.contains('testuser', { timeout: 10000 }).should('be.visible')
+    })
+  })
+
+  describe('注册和验证码功能', () => {
+    it('显示验证码发送按钮', () => {
+      cy.contains('注册').click()
+      cy.contains('发送验证码').should('be.visible')
     })
 
-    it('注册标签页显示所有必要字段', () => {
+    it('未输入邮箱不能发送验证码', () => {
       cy.contains('注册').click()
-      cy.get('input[type="password"]').should('have.length.at.least', 2)
+      cy.contains('发送验证码').click()
+      cy.contains('请先输入邮箱').should('be.visible')
+    })
+
+    it('可以发送验证码到有效邮箱', () => {
+      cy.contains('注册').click()
+      cy.get('input[placeholder="example@mail.com"]').last().clear().type('newuser@mail.com')
+      cy.contains('发送验证码').click()
+      cy.contains('验证码已发送', { timeout: 5000 }).should('be.visible')
     })
   })
 

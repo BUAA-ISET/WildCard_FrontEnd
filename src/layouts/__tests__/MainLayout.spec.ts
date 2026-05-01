@@ -1,6 +1,7 @@
 import { RouterLinkStub, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { useUserStore } from '../../stores/userStore'
 import MainLayout from '../MainLayout.vue'
 
 vi.mock('vue-router', async () => {
@@ -20,48 +21,207 @@ describe('MainLayout', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders the application shell navigation', () => {
-    const wrapper = mount(MainLayout, {
-      global: {
-        stubs: {
-          'router-link': RouterLinkStub,
-          'router-view': true,
-          'el-icon': true,
-          House: true,
-          EditPen: true,
-          User: true,
-          Shop: true,
-          Brush: true,
-          VideoPlay: true,
+  describe('应用外壳导航', () => {
+    it('渲染应用外壳导航', () => {
+      const wrapper = mount(MainLayout, {
+        global: {
+          stubs: {
+            'router-link': RouterLinkStub,
+            'router-view': true,
+            'el-icon': true,
+            House: true,
+            EditPen: true,
+            User: true,
+            Shop: true,
+            Brush: true,
+            VideoPlay: true,
+          },
         },
-      },
-    })
+      })
 
-    expect(wrapper.text()).toContain('WildCard')
-    expect(wrapper.text()).toContain('首页')
-    expect(wrapper.text()).toContain('创作中心')
-    expect(wrapper.text()).toContain('用户中心')
-    expect(wrapper.text()).toContain('规则市场')
+      expect(wrapper.text()).toContain('WildCard')
+      expect(wrapper.text()).toContain('首页')
+      expect(wrapper.text()).toContain('创作中心')
+      expect(wrapper.text()).toContain('用户中心')
+      expect(wrapper.text()).toContain('规则市场')
+    })
   })
 
-  it('shows the default user summary', () => {
-    const wrapper = mount(MainLayout, {
-      global: {
-        stubs: {
-          'router-link': RouterLinkStub,
-          'router-view': true,
-          'el-icon': true,
-          House: true,
-          EditPen: true,
-          User: true,
-          Shop: true,
-          Brush: true,
-          VideoPlay: true,
+  describe('未登录状态的用户展示', () => {
+    it('显示默认用户摘要（未登录）', () => {
+      const wrapper = mount(MainLayout, {
+        global: {
+          stubs: {
+            'router-link': RouterLinkStub,
+            'router-view': true,
+            'el-icon': true,
+            House: true,
+            EditPen: true,
+            User: true,
+            Shop: true,
+            Brush: true,
+            VideoPlay: true,
+          },
         },
-      },
+      })
+
+      expect(wrapper.text()).toContain('未登录')
+      expect(wrapper.text()).toContain('not logged in')
     })
 
-    expect(wrapper.text()).toContain('未登录')
-    expect(wrapper.text()).toContain('not logged in')
+    it('显示默认头像', () => {
+      const wrapper = mount(MainLayout, {
+        global: {
+          stubs: {
+            'router-link': RouterLinkStub,
+            'router-view': true,
+            'el-icon': true,
+            House: true,
+            EditPen: true,
+            User: true,
+            Shop: true,
+            Brush: true,
+            VideoPlay: true,
+          },
+        },
+      })
+
+      expect(wrapper.find('.avatar-circle').exists()).toBe(true)
+    })
+  })
+
+  describe('已登录状态的用户展示', () => {
+    it('登录后显示用户邮箱', () => {
+      const userStore = useUserStore()
+      userStore.setUser({
+        id: '1',
+        username: 'testuser',
+        email: 'test@mail.com',
+        avatar: '',
+      })
+
+      const wrapper = mount(MainLayout, {
+        global: {
+          stubs: {
+            'router-link': RouterLinkStub,
+            'router-view': true,
+            'el-icon': true,
+            House: true,
+            EditPen: true,
+            User: true,
+            Shop: true,
+            Brush: true,
+            VideoPlay: true,
+          },
+        },
+      })
+
+      expect(wrapper.find('.username').text()).toBe('testuser')
+      expect(wrapper.find('.user-email').text()).toBe('test@mail.com')
+    })
+
+    it('登录后显示用户头像', () => {
+      const userStore = useUserStore()
+      userStore.setUser({
+        id: '1',
+        username: 'testuser',
+        email: 'test@mail.com',
+        avatar: 'https://example.com/avatar.png',
+      })
+
+      const wrapper = mount(MainLayout, {
+        global: {
+          stubs: {
+            'router-link': RouterLinkStub,
+            'router-view': true,
+            'el-icon': true,
+            House: true,
+            EditPen: true,
+            User: true,
+            Shop: true,
+            Brush: true,
+            VideoPlay: true,
+          },
+        },
+      })
+
+      const avatarImg = wrapper.find('.avatar-circle')
+      expect(avatarImg.exists()).toBe(true)
+    })
+
+    it('退出登录后恢复默认显示', async () => {
+      const userStore = useUserStore()
+      userStore.setUser({
+        id: '1',
+        username: 'testuser',
+        email: 'test@mail.com',
+        avatar: '',
+      })
+
+      const wrapper = mount(MainLayout, {
+        global: {
+          stubs: {
+            'router-link': RouterLinkStub,
+            'router-view': true,
+            'el-icon': true,
+            House: true,
+            EditPen: true,
+            User: true,
+            Shop: true,
+            Brush: true,
+            VideoPlay: true,
+          },
+        },
+      })
+
+      expect(wrapper.find('.username').text()).toBe('testuser')
+
+      userStore.setUser(null)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('.username').text()).toBe('未登录')
+      expect(wrapper.find('.user-email').text()).toBe('not logged in')
+    })
+  })
+
+  describe('用户展示框与登录状态同步', () => {
+    it('用户信息更新后同步到导航栏', async () => {
+      const userStore = useUserStore()
+      userStore.setUser({
+        id: '1',
+        username: 'initialuser',
+        email: 'initial@mail.com',
+        avatar: '',
+      })
+
+      const wrapper = mount(MainLayout, {
+        global: {
+          stubs: {
+            'router-link': RouterLinkStub,
+            'router-view': true,
+            'el-icon': true,
+            House: true,
+            EditPen: true,
+            User: true,
+            Shop: true,
+            Brush: true,
+            VideoPlay: true,
+          },
+        },
+      })
+
+      expect(wrapper.find('.username').text()).toBe('initialuser')
+
+      userStore.setUser({
+        id: '2',
+        username: 'updateduser',
+        email: 'updated@mail.com',
+        avatar: '',
+      })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('.username').text()).toBe('updateduser')
+      expect(wrapper.find('.user-email').text()).toBe('updated@mail.com')
+    })
   })
 })
