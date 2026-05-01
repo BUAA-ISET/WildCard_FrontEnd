@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RuleStructurePanel from '../RuleStructurePanel.vue'
-import { createInitialDesign, createRuleObjectPool } from '../../utils/ruleBuilder'
+import { createInitialDesign, createRuleObjectPool } from '../../../utils/ruleBuilder'
 
 const mockDesign = createInitialDesign()
 const mockObjectPool = createRuleObjectPool(mockDesign)
