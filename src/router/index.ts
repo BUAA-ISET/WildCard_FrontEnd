@@ -5,6 +5,7 @@ import HomeView from '../views/HomeView.vue'
 import About from '../views/About.vue'
 import CardStyleView from '../views/CardStyleView.vue'
 import BattleView from '../views/BattleView.vue'
+import ReadyRoomView from '../views/ReadyRoomView.vue'
 import UserView from '../views/UserView.vue'
 import JoinRoomView from '../views/JoinRoomView.vue'
 import CreateRoomView from '../views/CreateRoomView.vue'
@@ -58,6 +59,10 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: '/game/:roomCode',
+        component: ReadyRoomView
+      },
+      {
+        path: '/game/:roomCode/battle',
         component: BattleView
       }
     ]
