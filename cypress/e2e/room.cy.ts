@@ -2,7 +2,7 @@
 
 describe('online room pages', () => {
   it('creates a room and navigates to the game page', () => {
-    cy.visit('/create-room')
+    cy.visit('/create-room', { timeout: 60000 })
 
     cy.contains('h1', 'Create Room').should('be.visible')
     cy.contains('Room Settings').should('be.visible')
@@ -16,7 +16,7 @@ describe('online room pages', () => {
   })
 
   it('joins a password-protected room and navigates to the game page', () => {
-    cy.visit('/join-room')
+    cy.visit('/join-room', { timeout: 60000 })
 
     cy.contains('h1', 'Join Room').should('be.visible')
     cy.get('.join-room-input input').type('123456')

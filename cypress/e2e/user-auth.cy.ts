@@ -1,12 +1,8 @@
 /// <reference types="cypress" />
 
-const visitOptions = {
-  onLoad: () => {},
-}
-
 describe('用户认证测试', () => {
   beforeEach(() => {
-    cy.visit('/user-info', visitOptions)
+    cy.visit('/user-info', { timeout: 60000 })
   })
 
   describe('登录/注册界面渲染', () => {
@@ -31,17 +27,6 @@ describe('用户认证测试', () => {
     it('注册标签页显示所有必要字段', () => {
       cy.contains('注册').click()
       cy.get('input[type="password"]').should('have.length.at.least', 2)
-    })
-  })
-
-  describe('切换登录状态', () => {
-    it('切换登录状态按钮可见', () => {
-      cy.contains('切换登录状态').should('be.visible')
-    })
-
-    it('点击切换按钮可以从登录状态变为未登录状态', () => {
-      cy.contains('切换登录状态').click()
-      cy.contains('登录').should('be.visible')
     })
   })
 

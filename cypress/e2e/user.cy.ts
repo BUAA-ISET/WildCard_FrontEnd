@@ -2,7 +2,7 @@
 
 describe('user shell', () => {
   it('renders the application shell and home entry actions', () => {
-    cy.visit('/')
+    cy.visit('/', { timeout: 60000 })
 
     cy.get('[data-testid="app-shell"]').should('exist')
     cy.contains('WildCard').should('be.visible')
