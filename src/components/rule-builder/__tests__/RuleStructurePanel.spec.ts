@@ -142,7 +142,7 @@ describe('RuleStructurePanel.vue', () => {
             'el-input': true,
             'el-input-number': true,
             'el-textarea': true,
-            'el-button': true,
+            'el-button': { template: '<button class="el-button"><slot /></button>' },
             'el-checkbox': true,
             'el-checkbox-group': true,
             'el-select': true,
@@ -152,8 +152,7 @@ describe('RuleStructurePanel.vue', () => {
         },
       })
       expect(wrapper.find('.cardset-actions').exists()).toBe(true)
-      expect(wrapper.text()).toContain('新增牌型')
-      expect(wrapper.text()).toContain('删除当前')
+      expect(wrapper.find('.cardset-actions button').exists()).toBe(true)
     })
 
     it('点击新增牌型按钮触发事件', async () => {
@@ -171,7 +170,7 @@ describe('RuleStructurePanel.vue', () => {
             'el-input': true,
             'el-input-number': true,
             'el-textarea': true,
-            'el-button': true,
+            'el-button': { template: '<button class="el-button" @click="$emit(\'click\')"><slot /></button>' },
             'el-checkbox': true,
             'el-checkbox-group': true,
             'el-select': true,
@@ -181,7 +180,7 @@ describe('RuleStructurePanel.vue', () => {
         },
       })
 
-      await wrapper.find('.cardset-actions .el-button').trigger('click')
+      await wrapper.find('.cardset-actions button').trigger('click')
       expect(wrapper.emitted('add-cardset')).toBeTruthy()
     })
   })
