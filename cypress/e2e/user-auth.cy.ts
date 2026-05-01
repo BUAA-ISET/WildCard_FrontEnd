@@ -1,8 +1,12 @@
 /// <reference types="cypress" />
 
+const visitOptions = {
+  onLoad: () => {},
+}
+
 describe('用户认证测试', () => {
   beforeEach(() => {
-    cy.visit('/user-info')
+    cy.visit('/user-info', visitOptions)
   })
 
   describe('登录/注册界面渲染', () => {
