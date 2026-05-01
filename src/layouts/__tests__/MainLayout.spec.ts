@@ -1,5 +1,6 @@
 import { RouterLinkStub, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import MainLayout from '../MainLayout.vue'
 
 vi.mock('vue-router', async () => {
@@ -16,6 +17,7 @@ vi.mock('vue-router', async () => {
 describe('MainLayout', () => {
   beforeEach(() => {
     vi.stubGlobal('open', vi.fn())
+    setActivePinia(createPinia())
   })
 
   it('renders the application shell navigation', () => {
@@ -59,7 +61,7 @@ describe('MainLayout', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Username')
-    expect(wrapper.text()).toContain('Default Account')
+    expect(wrapper.text()).toContain('未登录')
+    expect(wrapper.text()).toContain('not logged in')
   })
 })
