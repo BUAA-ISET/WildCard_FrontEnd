@@ -16,7 +16,7 @@ vi.mock('../../api/user', () => ({
 
 describe('userStore', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
+    a())
     vi.clearAllMocks()
   })
 
