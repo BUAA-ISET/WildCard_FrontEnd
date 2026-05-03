@@ -18,6 +18,7 @@ describe('userStore', () => {
   beforeEach(() => {
     localStorage.clear()
     setActivePinia(createPinia())
+    localStorage.clear()
     vi.clearAllMocks()
   })
 
