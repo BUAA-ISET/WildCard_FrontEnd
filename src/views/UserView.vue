@@ -95,8 +95,10 @@ import { ElMessage } from 'element-plus'
 import { shouldUseMockApi } from '../api/config'
 import { userApi } from '../api/user'
 import { useUserStore } from '../stores/userStore'
+import defaultAvatarUrl from '../assets/default-avatar.svg'
 
-const defaultAvatar = 'https://www.gravatar.com/avatar/?d=mp&s=120'
+
+const defaultAvatar = defaultAvatarUrl;
 const SEND_CODE_COOLDOWN = 60
 const isMockApi = shouldUseMockApi()
 

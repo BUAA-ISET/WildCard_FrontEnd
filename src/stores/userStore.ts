@@ -1,19 +1,47 @@
 import { defineStore } from 'pinia'
 import { userApi, type User } from '../api/user'
+import { USER_STORAGE_KEY } from '../utils/storageNamespace'
 
 type Credentials = {
   email: string
   password: string
 }
 
+function loadUserFromStorage(): User | null {
+  try {
+    const stored = localStorage.getItem(USER_STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (e) {
+    console.error('Failed to load user from storage:', e)
+  }
+  return null
+}
+
+function saveUserToStorage(user: User | null): void {
+  try {
+    if (user) {
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+    } else {
+      localStorage.removeItem(USER_STORAGE_KEY)
+    }
+  } catch (e) {
+    console.error('Failed to save user to storage:', e)
+  }
+}
+
 export const useUserStore = defineStore('user', {
-  state: () => ({
-    id: '',
-    email: '',
-    username: '',
-    avatar: '',
-    isLoggedIn: false,
-  }),
+  state: () => {
+    const storedUser = loadUserFromStorage()
+    return {
+      id: storedUser?.id ?? '',
+      email: storedUser?.email ?? '',
+      username: storedUser?.username ?? '',
+      avatar: storedUser?.avatar ?? '',
+      isLoggedIn: storedUser !== null,
+    }
+  },
   actions: {
     applyUser(user: User | null) {
       if (!user) {
@@ -22,6 +50,7 @@ export const useUserStore = defineStore('user', {
         this.username = ''
         this.avatar = ''
         this.isLoggedIn = false
+        saveUserToStorage(null)
         return
       }
 
@@ -30,6 +59,7 @@ export const useUserStore = defineStore('user', {
       this.username = user.username
       this.avatar = user.avatar
       this.isLoggedIn = true
+      saveUserToStorage(user)
     },
     async login({ email, password }: Credentials) {
       const trimmedEmail = email.trim()
