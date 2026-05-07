@@ -60,11 +60,12 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
+import defaultAvatarUrl from '../assets/default-avatar.svg'
 
 const router = useRouter()
 const userStore = useUserStore()
 const { username, email, avatar } = storeToRefs(userStore)
-const defaultAvatar = 'https://www.gravatar.com/avatar/?d=mp&s=120'
+const defaultAvatar = defaultAvatarUrl;
 
 const displayAvatar = computed(() => avatar.value || defaultAvatar)
 const displayUsername = computed(() => username.value || '未登录')

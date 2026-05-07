@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { apiGet, apiPost, apiPut } from './request'
 import { API_CONFIG, shouldUseMockApi } from './config'
+import { scopedStorageKey, USER_STORAGE_KEY } from '../utils/storageNamespace'
 
 export interface User {
   id: string
@@ -74,10 +75,6 @@ function buildAccountsMap(accounts: MockAccount[]) {
   return new Map(accounts.map((account) => [normalizeEmail(account.email), account]))
 }
 
-function setCurrentUser(user: User | null) {
-  currentUser.value = user
-}
-
 function generateVerificationCode() {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
@@ -118,9 +115,61 @@ function validateVerificationCode(email: string, code: string) {
   return { success: true }
 }
 
-const mockAccounts = buildAccountsMap(defaultMockAccounts)
+const MOCK_ACCOUNTS_STORAGE_KEY = scopedStorageKey('mock-accounts')
+
+function loadMockAccountsFromStorage(): MockAccount[] {
+  try {
+    const stored = localStorage.getItem(MOCK_ACCOUNTS_STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (e) {
+    console.error('Failed to load mock accounts from storage:', e)
+  }
+  return defaultMockAccounts
+}
+
+function saveMockAccountsToStorage(): void {
+  try {
+    localStorage.setItem(MOCK_ACCOUNTS_STORAGE_KEY, JSON.stringify(Array.from(mockAccounts.values())))
+  } catch (e) {
+    console.error('Failed to save mock accounts to storage:', e)
+  }
+}
+
+const mockAccounts = buildAccountsMap(loadMockAccountsFromStorage())
 const verificationCodes = new Map<string, VerificationRecord>()
-const currentUser = ref<User | null>(null)
+
+function loadUserFromStorage(): User | null {
+  try {
+    const stored = localStorage.getItem(USER_STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (e) {
+    console.error('Failed to load user from storage:', e)
+  }
+  return null
+}
+
+function saveUserToStorage(user: User | null): void {
+  try {
+    if (user) {
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+    } else {
+      localStorage.removeItem(USER_STORAGE_KEY)
+    }
+  } catch (e) {
+    console.error('Failed to save user to storage:', e)
+  }
+}
+
+const currentUser = ref<User | null>(loadUserFromStorage())
+
+function setCurrentUser(user: User | null) {
+  currentUser.value = user
+  saveUserToStorage(user)
+}
 
 export const userApi = {
   async login(params: LoginParams): Promise<ApiResult<User>> {
@@ -203,6 +252,7 @@ export const userApi = {
         }
 
         mockAccounts.set(email, account)
+        saveMockAccountsToStorage()
 
         const user = toUser(account)
         setCurrentUser(user)
@@ -252,6 +302,7 @@ export const userApi = {
         }
 
         account.username = username
+        saveMockAccountsToStorage()
 
         const user = toUser(account)
         setCurrentUser(user)
@@ -282,6 +333,7 @@ export const userApi = {
         }
 
         account.password = params.newPassword
+        saveMockAccountsToStorage()
         return { success: true, message: '密码更新成功' }
       },
     })

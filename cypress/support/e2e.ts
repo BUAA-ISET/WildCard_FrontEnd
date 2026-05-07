@@ -1,3 +1,18 @@
 /// <reference types="cypress" />
 
-// Global Cypress support hooks can be added here as the app grows.
+Cypress.on('uncaught:exception', () => false)
+
+beforeEach(() => {
+  cy.clearCookies()
+  cy.clearLocalStorage()
+  cy.intercept('https://www.gravatar.com/**', {
+    statusCode: 200,
+    body: '',
+    headers: { 'Content-Type': 'image/png' }
+  })
+})
+
+afterEach(() => {
+  cy.clearCookies()
+  cy.clearLocalStorage()
+})
