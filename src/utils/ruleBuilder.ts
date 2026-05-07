@@ -1,4 +1,5 @@
 import type {
+  CardsetComparisonDraft,
   CardsetDraft,
   ComponentTemplate,
   ExportedFlowNode,
@@ -36,7 +37,7 @@ export const componentTemplates: ComponentTemplate[] = [
     category: 'execute',
     scopes: ['match', 'settlement', 'cardset', 'cardsetCompare', 'method'],
     description: '按照属性优先级对集合排序',
-    defaultContent: () => ({ properties: [{ name: '', order: 1 }] }),
+    defaultContent: () => ({ selection: '', properties: [{ name: '', order: 1 }] }),
   },
   {
     title: '赋值',
@@ -251,7 +252,7 @@ const fixedTemplates: Record<FlowScope, ComponentTemplate> = {
     scopes: ['cardsetCompare'],
     description: '固定起点，提供牌型 A 和牌型 B',
     fixed: true,
-    defaultContent: () => ({}),
+    defaultContent: () => ({ cardsetA: '', cardsetB: '' }),
   },
   method: {
     title: '方法开始',
@@ -337,6 +338,18 @@ export const createCardset = (name: string, index: number): CardsetDraft => ({
 })
 //卡组创建后flow里可以访问初始节点
 
+export const createCardsetComparison = (
+  index: number,
+  cardsetA = '',
+  cardsetB = '',
+): CardsetComparisonDraft => ({
+  id: String(index),
+  name: `牌型比较${index}`,
+  cardsetA,
+  cardsetB,
+  compareFlow: createEmptyGraph('cardsetCompare'),
+})
+
 export const createInitialDesign = (): RuleDesignDraft => ({
   info: {
     name: '未命名规则',
@@ -393,6 +406,7 @@ export const createInitialDesign = (): RuleDesignDraft => ({
     },
   },
   cardsets: [createCardset('单张', 1)],
+  cardsetComparisons: [createCardsetComparison(1)],
   matchFlow: createEmptyGraph('match'),
   endFlow: createEmptyGraph('settlement'),
 })
@@ -540,18 +554,24 @@ const getSortedNodes = (graph: FlowGraphDraft) => {
   return startNode ? [startNode, ...otherNodes] : otherNodes
 }
 
-const getOrdinalMap = (graph: FlowGraphDraft) => {
+export const getFlowOrdinalMap = (graph: FlowGraphDraft) => {
   const entries = getSortedNodes(graph).map((node, index) => [node.id, String(index + 1)])
   return Object.fromEntries(entries) as Record<string, string>
 }
 
 const getOutgoingEdges = (graph: FlowGraphDraft, nodeId: string) => {
-  return graph.edges.filter(edge => edge.source === nodeId)
+  return graph.edges.filter(edge => edge.source === nodeId && !isSemanticInputEdge(edge))
 }
 //寻找某一节点的出边
 
+const semanticTargetHandles = ['index', 'component', 'rvalue', 'lval', 'rval', 'return']
+
+const isSemanticInputEdge = (edge: RuleEdgeDraft) => {
+  return semanticTargetHandles.includes(edge.targetHandle || '')
+}
+
 export const exportFlowGraph = (graph: FlowGraphDraft): Record<string, ExportedFlowNode> => {
-  const ordinalMap = getOrdinalMap(graph)
+  const ordinalMap = getFlowOrdinalMap(graph)
   const result: Record<string, ExportedFlowNode> = {}
 
   getSortedNodes(graph).forEach(node => {
@@ -620,6 +640,41 @@ export const exportRuleDesign = (design: RuleDesignDraft): ExportedRuleDesign =>
       },
     ]),
   ),
+  cardset_comparisons: Object.fromEntries(
+    design.cardsetComparisons.map(comparison => {
+      const cardsetAName = design.cardsets.find(cardset => cardset.id === comparison.cardsetA)?.name || ''
+      const cardsetBName = design.cardsets.find(cardset => cardset.id === comparison.cardsetB)?.name || ''
+      const compareFlow = {
+        ...comparison.compareFlow,
+        nodes: comparison.compareFlow.nodes.map(node => {
+          if (node.data.componentType !== 29) {
+            return node
+          }
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              content: {
+                ...(node.data.content || {}),
+                cardsetA: cardsetAName,
+                cardsetB: cardsetBName,
+              },
+            },
+          }
+        }),
+      }
+
+      return [
+        comparison.id,
+        {
+          cardsetA: cardsetAName,
+          cardsetB: cardsetBName,
+          compare_flow: exportFlowGraph(compareFlow),
+        },
+      ]
+    }),
+  ),
   match_flow: exportFlowGraph(design.matchFlow),
   end_flow: exportFlowGraph(design.endFlow),
 })
@@ -669,7 +724,10 @@ export const validateRuleDesign = (design: RuleDesignDraft): ValidationResult[] 
 
   design.cardsets.forEach(cardset => {
     results.push(...validateGraph(cardset.buildFlow, `牌型「${cardset.name}」构建流程`))
-    results.push(...validateGraph(cardset.compareFlow, `牌型「${cardset.name}」内部比较流程`))
+  })
+
+  design.cardsetComparisons.forEach(comparison => {
+    results.push(...validateGraph(comparison.compareFlow, `牌型比较「${comparison.name}」流程`))
   })
 
   Object.values(design.classes).forEach(classDraft => {
