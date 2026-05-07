@@ -57,6 +57,14 @@ export interface CardsetDraft {
   compareFlow: FlowGraphDraft
 }
 
+export interface CardsetComparisonDraft {
+  id: string
+  name: string
+  cardsetA: string
+  cardsetB: string
+  compareFlow: FlowGraphDraft
+}
+
 export interface FlowGraphDraft {
   nodes: RuleNodeDraft[]
   edges: RuleEdgeDraft[]
@@ -105,6 +113,7 @@ export interface RuleDesignDraft {
   info: RuleInfoDraft
   classes: Record<string, RuleClassDraft>
   cardsets: CardsetDraft[]
+  cardsetComparisons: CardsetComparisonDraft[]
   matchFlow: FlowGraphDraft
   endFlow: FlowGraphDraft
 }
@@ -160,6 +169,11 @@ export type ExportedRuleDesign = {
     build_flow: Record<string, ExportedFlowNode>
     compare_flow: Record<string, ExportedFlowNode>
     successors: string[]
+  }>
+  cardset_comparisons: Record<string, {
+    cardsetA: string
+    cardsetB: string
+    compare_flow: Record<string, ExportedFlowNode>
   }>
   match_flow: Record<string, ExportedFlowNode>
   end_flow: Record<string, ExportedFlowNode>

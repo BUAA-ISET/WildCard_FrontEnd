@@ -60,18 +60,6 @@
             <el-form-item label="牌型名称">
               <el-input v-model="activeCardset.name" />
             </el-form-item>
-            <el-form-item label="优先级高于">
-              <el-checkbox-group v-model="activeCardset.successors">
-                <el-checkbox
-                  v-for="cardset in design.cardsets"
-                  :key="cardset.id"
-                  :disabled="cardset.id === activeCardset.id"
-                  :label="cardset.id"
-                >
-                  {{ cardset.name }}
-                </el-checkbox>
-              </el-checkbox-group>
-            </el-form-item>
           </el-form>
           <PropertyListEditor
             title="牌型属性"
@@ -79,6 +67,37 @@
             @add="addActiveCardsetProperty"
             @remove="removeActiveCardsetProperty"
           />
+        </div>
+      </section>
+
+      <section class="basic-section">
+        <div class="section-title">
+          <span>牌型比较</span>
+          <el-button size="small" @click="$emit('add-cardset-comparison')">新增比较</el-button>
+        </div>
+        <div v-if="design.cardsetComparisons.length === 0" class="empty-text">暂无比较流程</div>
+        <div
+          v-for="comparison in design.cardsetComparisons"
+          :key="comparison.id"
+          class="comparison-item"
+          :class="{ active: comparison.id === activeComparisonId }"
+        >
+          <button class="comparison-select" type="button" @click="$emit('select-comparison', comparison.id)">
+            编辑流程
+          </button>
+          <div class="comparison-info">
+            <strong>{{ getComparisonTitle(comparison) }}</strong>
+            <small>#{{ comparison.id }}</small>
+          </div>
+          <el-button
+            size="small"
+            text
+            type="danger"
+            :disabled="design.cardsetComparisons.length <= 1"
+            @click="$emit('remove-cardset-comparison', comparison.id)"
+          >
+            删除
+          </el-button>
         </div>
       </section>
 
@@ -165,11 +184,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import PropertyListEditor from './PropertyListEditor.vue'
-import type { RuleDesignDraft, RuleObjectPool } from '../../types/ruleBuilder'
+import type { CardsetComparisonDraft, RuleDesignDraft, RuleObjectPool } from '../../types/ruleBuilder'
 
 const props = defineProps<{
   design: RuleDesignDraft
   activeCardsetId: string
+  activeComparisonId: string | null
   activeMethodId: string | null
   objectPool: RuleObjectPool
 }>()
@@ -180,6 +200,9 @@ const emit = defineEmits<{
   (event: 'remove-cardset', cardsetId: string): void
   (event: 'add-cardset-property', cardsetId: string): void
   (event: 'remove-cardset-property', cardsetId: string, propertyId: string): void
+  (event: 'select-comparison', comparisonId: string): void
+  (event: 'add-cardset-comparison'): void
+  (event: 'remove-cardset-comparison', comparisonId: string): void
   (event: 'add-class-property', className: string, propertyType: 'default' | 'user'): void
   (event: 'remove-class-property', className: string, propertyType: 'default' | 'user', propertyId: string): void
   (event: 'select-method', className: string, methodId: string): void
@@ -191,6 +214,14 @@ const emit = defineEmits<{
 
 const classList = computed(() => Object.values(props.design.classes))
 const activeCardset = computed(() => props.design.cardsets.find(cardset => cardset.id === props.activeCardsetId))
+
+const getCardsetName = (cardsetId: string) => {
+  return props.design.cardsets.find(cardset => cardset.id === cardsetId)?.name || '未选择'
+}
+
+const getComparisonTitle = (comparison: CardsetComparisonDraft) => {
+  return `${getCardsetName(comparison.cardsetA)} 与 ${getCardsetName(comparison.cardsetB)}`
+}
 
 const addActiveCardsetProperty = () => {
   if (activeCardset.value) {
@@ -298,6 +329,58 @@ const removeActiveCardsetProperty = (propertyId: string) => {
 
 .cardset-editor {
   padding-top: 4px;
+}
+
+.comparison-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e1e5ed;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.comparison-item + .comparison-item {
+  margin-top: 8px;
+}
+
+.comparison-item.active {
+  border-color: #afa6e8;
+  background: #f5f2ff;
+}
+
+.comparison-select {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #d8dce5;
+  border-radius: 6px;
+  background: #fff;
+  color: #303644;
+  cursor: pointer;
+}
+
+.comparison-info {
+  min-width: 0;
+}
+
+.comparison-info strong,
+.comparison-info small {
+  display: block;
+}
+
+.comparison-info strong {
+  overflow: hidden;
+  color: #252633;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comparison-info small {
+  margin-top: 3px;
+  color: #7c8493;
 }
 
 .object-summary {

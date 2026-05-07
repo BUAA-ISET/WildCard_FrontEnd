@@ -34,6 +34,7 @@
         class="left-panel wide"
         :design="design"
         :active-cardset-id="activeCardsetId"
+        :active-comparison-id="activeComparisonId"
         :active-method-id="activeMethodId"
         :object-pool="objectPool"
         @select-cardset="activeCardsetId = $event"
@@ -41,6 +42,9 @@
         @remove-cardset="removeCardset"
         @add-cardset-property="addCardsetProperty"
         @remove-cardset-property="removeCardsetProperty"
+        @select-comparison="selectComparison"
+        @add-cardset-comparison="addCardsetComparison"
+        @remove-cardset-comparison="removeCardsetComparison"
         @add-class-property="addClassProperty"
         @remove-class-property="removeClassProperty"
         @select-method="selectMethod"
@@ -99,8 +103,15 @@
         v-if="activeWorkspace !== 'structure' && !showJson"
         :node="selectedNode"
         :design="design"
+        :active-method="activeWorkspace === 'method' ? activeMethod : null"
+        :active-cardset="activeWorkspace === 'cardset' ? activeCardset : null"
+        :active-comparison="activeWorkspace === 'cardsetCompare' ? activeComparison : null"
         :object-pool="objectPool"
+        :graph-nodes="activeGraph?.nodes || []"
+        :graph-edges="activeGraph?.edges || []"
         @update-content="updateNodeContent"
+        @update-method-return="updateActiveMethodReturn"
+        @update-comparison-cardsets="updateActiveComparisonCardsets"
       />
       <RuleJsonPreview
         v-if="showJson"
@@ -121,10 +132,12 @@ import RuleJsonPreview from '../components/rule-builder/RuleJsonPreview.vue'
 import RulePropertyPanel from '../components/rule-builder/RulePropertyPanel.vue'
 import RuleStructurePanel from '../components/rule-builder/RuleStructurePanel.vue'
 import { ruleApi } from '../api'
-import type { ComponentTemplate, FlowGraphDraft, FlowScope, MethodDraft, RuleNodeDraft } from '../types/ruleBuilder'
+import type { ComponentTemplate, FlowGraphDraft, FlowScope, MethodDraft, RuleEdgeDraft, RuleNodeDraft } from '../types/ruleBuilder'
 import {
+  cloneContent,
   componentTemplates,
   createCardset,
+  createCardsetComparison,
   createInitialDesign,
   createMethod,
   createMethodParameter,
@@ -132,6 +145,7 @@ import {
   createProperty,
   createRuleObjectPool,
   exportRuleDesign,
+  getFlowOrdinalMap,
   validateRuleDesign,
 } from '../utils/ruleBuilder'
 
@@ -140,6 +154,7 @@ type WorkspaceKey = 'structure' | 'method' | 'cardset' | 'cardsetCompare' | 'mat
 const design = reactive(createInitialDesign())
 const activeWorkspace = ref<WorkspaceKey>('structure')
 const activeCardsetId = ref(design.cardsets[0].id)
+const activeComparisonId = ref(design.cardsetComparisons[0]?.id || null)
 const activeMethodClassName = ref<string | null>(null)
 const activeMethodId = ref<string | null>(null)
 const selectedNodeId = ref<string | null>(null)
@@ -159,13 +174,17 @@ const workspaces: { key: WorkspaceKey; label: string }[] = [
 
 const steps = [
   { index: '01', title: '设定规则和固有类属性', description: '玩家、牌、牌桌的默认属性会进入导出的 classes 字段。' },
-  { index: '02', title: '创建牌型和优先级关系', description: '牌型之间的有向边会导出为 successors。' },
+  { index: '02', title: '创建牌型和比较关系', description: '每个牌型比较流程只描述两种牌型的优先关系。' },
   { index: '03', title: '绘制流程图', description: '每张图固定一个开始节点，导出时它会成为编号 1。' },
   { index: '04', title: '检查并保存 JSON', description: '前端先完成基础校验，后端接口接入后直接提交报文。' },
 ]
 
 const activeCardset = computed(() => {
   return design.cardsets.find(cardset => cardset.id === activeCardsetId.value) || design.cardsets[0]
+})
+
+const activeComparison = computed(() => {
+  return design.cardsetComparisons.find(comparison => comparison.id === activeComparisonId.value) || design.cardsetComparisons[0] || null
 })
 
 const objectPool = computed(() => createRuleObjectPool(design))
@@ -220,7 +239,7 @@ const activeGraph = computed<FlowGraphDraft | null>(() => {
   }
 
   if (activeWorkspace.value === 'cardsetCompare') {
-    return activeCardset.value.compareFlow
+    return activeComparison.value?.compareFlow || null
   }
 
   if (activeWorkspace.value === 'method') {
@@ -236,7 +255,7 @@ const activeCanvasTitle = computed(() => {
   }
 
   if (activeWorkspace.value === 'cardsetCompare') {
-    return `牌型比较：${activeCardset.value.name}`
+    return `牌型比较：${getCardsetName(activeComparison.value?.cardsetA || '')}与${getCardsetName(activeComparison.value?.cardsetB || '')}`
   }
 
   if (activeWorkspace.value === 'method') {
@@ -282,13 +301,42 @@ const exportedDesign = computed(() => exportRuleDesign(design))
 const jsonText = computed(() => JSON.stringify(exportedDesign.value, null, 2))
 const validations = computed(() => validateRuleDesign(design))
 
+const getCardsetName = (cardsetId: string) => {
+  return design.cardsets.find(cardset => cardset.id === cardsetId)?.name || '未选择'
+}
+
 watch(activeWorkspace, () => {
   selectedNodeId.value = null
+
+  if (activeWorkspace.value === 'method' && activeGraph.value) {
+    activeGraph.value.nodes = syncSemanticInputs(activeGraph.value.nodes, activeGraph.value.edges)
+  }
 })
 
 watch(activeCardsetId, () => {
   selectedNodeId.value = null
 })
+
+watch(activeComparisonId, () => {
+  selectedNodeId.value = null
+})
+
+watch(activeMethodId, () => {
+  if (activeWorkspace.value === 'method' && activeGraph.value) {
+    activeGraph.value.nodes = syncSemanticInputs(activeGraph.value.nodes, activeGraph.value.edges)
+  }
+})
+
+watch(
+  () => activeMethod.value?.returns,
+  () => {
+    if (activeWorkspace.value !== 'method' || !activeGraph.value) {
+      return
+    }
+
+    activeGraph.value.nodes = syncSemanticInputs(activeGraph.value.nodes, activeGraph.value.edges)
+  },
+)
 
 onMounted(() => {
   document.addEventListener('fullscreenchange', syncFullscreenState)
@@ -298,12 +346,77 @@ onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', syncFullscreenState)
 })
 
+const getContentString = (content: Record<string, unknown>, field: string) => {
+  const value = content[field]
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
+}
+
+const syncSemanticInputs = (nodes: RuleNodeDraft[], edges: RuleEdgeDraft[]) => {
+  const ordinalMap = getFlowOrdinalMap({ nodes, edges })
+
+  return nodes.map(node => {
+    if (node.data.content === null) {
+      return node
+    }
+
+    const nextContent = cloneContent(node.data.content) || {}
+
+    if (node.data.componentType === 5) {
+      const indexEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'index')
+      nextContent.index = indexEdge ? ordinalMap[indexEdge.source] || '' : ''
+    }
+
+    if (node.data.componentType === 4) {
+      const componentEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'component')
+      const rvalueEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'rvalue')
+      nextContent.component = componentEdge ? ordinalMap[componentEdge.source] || '' : ''
+      nextContent.rvalue = rvalueEdge ? ordinalMap[rvalueEdge.source] || '' : ''
+    }
+
+    if ([11, 13].includes(node.data.componentType)) {
+      const componentEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'component')
+      nextContent.component = componentEdge ? ordinalMap[componentEdge.source] || '' : ''
+    }
+
+    if ([10, 12, 14].includes(node.data.componentType)) {
+      const lvalEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'lval')
+      const rvalEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'rval')
+      nextContent.lval = lvalEdge ? ordinalMap[lvalEdge.source] || '' : ''
+      nextContent.rval = rvalEdge ? ordinalMap[rvalEdge.source] || '' : ''
+    }
+
+    if (node.data.componentType === 26) {
+      const returnEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'return')
+      nextContent.return = activeMethod.value?.returns ? returnEdge ? ordinalMap[returnEdge.source] || '' : '' : 'void'
+    }
+
+    if (
+      getContentString(node.data.content, 'index') === getContentString(nextContent, 'index') &&
+      getContentString(node.data.content, 'component') === getContentString(nextContent, 'component') &&
+      getContentString(node.data.content, 'rvalue') === getContentString(nextContent, 'rvalue') &&
+      getContentString(node.data.content, 'lval') === getContentString(nextContent, 'lval') &&
+      getContentString(node.data.content, 'rval') === getContentString(nextContent, 'rval') &&
+      getContentString(node.data.content, 'return') === getContentString(nextContent, 'return')
+    ) {
+      return node
+    }
+
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        content: nextContent,
+      },
+    }
+  })
+}
+
 const updateNodes = (nodes: RuleNodeDraft[]) => {
   if (!activeGraph.value) {
     return
   }
 
-  activeGraph.value.nodes = nodes
+  activeGraph.value.nodes = syncSemanticInputs(nodes, activeGraph.value.edges)
 }
 
 const updateEdges = (edges: FlowGraphDraft['edges']) => {
@@ -312,6 +425,7 @@ const updateEdges = (edges: FlowGraphDraft['edges']) => {
   }
 
   activeGraph.value.edges = edges
+  activeGraph.value.nodes = syncSemanticInputs(activeGraph.value.nodes, edges)
 }
 
 const addNode = (template: ComponentTemplate) => {
@@ -322,7 +436,7 @@ const addNode = (template: ComponentTemplate) => {
 
   const center = flowCanvasRef.value?.getViewportCenter() || { x: 380, y: 260 }
   const node = createNodeFromTemplate(template, activeFlowScope.value, center.x - 95, center.y - 50)
-  activeGraph.value.nodes = [...activeGraph.value.nodes, node]
+  activeGraph.value.nodes = syncSemanticInputs([...activeGraph.value.nodes, node], activeGraph.value.edges)
   selectedNodeId.value = node.id
 }
 
@@ -346,6 +460,18 @@ const updateNodeContent = (nodeId: string, content: Record<string, unknown> | nu
   })
 }
 
+const updateActiveMethodReturn = (returns: MethodDraft['returns']) => {
+  if (!activeMethod.value) {
+    return
+  }
+
+  activeMethod.value.returns = returns
+
+  if (activeGraph.value) {
+    activeGraph.value.nodes = syncSemanticInputs(activeGraph.value.nodes, activeGraph.value.edges)
+  }
+}
+
 const deleteSelectedNode = () => {
   const node = selectedNode.value
 
@@ -353,8 +479,11 @@ const deleteSelectedNode = () => {
     return
   }
 
-  activeGraph.value.nodes = activeGraph.value.nodes.filter(item => item.id !== node.id)
-  activeGraph.value.edges = activeGraph.value.edges.filter(edge => edge.source !== node.id && edge.target !== node.id)
+  const nextEdges = activeGraph.value.edges.filter(edge => edge.source !== node.id && edge.target !== node.id)
+  const nextNodes = activeGraph.value.nodes.filter(item => item.id !== node.id)
+
+  activeGraph.value.edges = nextEdges
+  activeGraph.value.nodes = syncSemanticInputs(nextNodes, nextEdges)
   selectedNodeId.value = null
 }
 
@@ -389,8 +518,6 @@ const toggleFlowFullscreen = async () => {
 
   showJson.value = false
   await builderMainRef.value.requestFullscreen()
-  await nextTick()
-  await flowCanvasRef.value?.focusStartNode()
 }
 
 const addCardset = () => {
@@ -416,7 +543,79 @@ const removeCardset = (cardsetId: string) => {
   design.cardsets.forEach(cardset => {
     cardset.successors = cardset.successors.filter(successor => successor !== cardsetId)
   })
+  design.cardsetComparisons.forEach(comparison => {
+    if (comparison.cardsetA === cardsetId) {
+      comparison.cardsetA = ''
+    }
+
+    if (comparison.cardsetB === cardsetId) {
+      comparison.cardsetB = ''
+    }
+
+    syncComparisonStartNode(comparison)
+  })
   activeCardsetId.value = design.cardsets[0].id
+}
+
+const syncComparisonStartNode = (comparison: NonNullable<typeof activeComparison.value>) => {
+  comparison.compareFlow.nodes = comparison.compareFlow.nodes.map(node => {
+    if (node.data.componentType !== 29) {
+      return node
+    }
+
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        content: {
+          ...(node.data.content || {}),
+          cardsetA: comparison.cardsetA,
+          cardsetB: comparison.cardsetB,
+        },
+      },
+    }
+  })
+}
+
+const selectComparison = (comparisonId: string) => {
+  const comparison = design.cardsetComparisons.find(item => item.id === comparisonId)
+  const startNodeId = comparison?.compareFlow.nodes.find(node => node.data.componentType === 29)?.id || null
+
+  activeComparisonId.value = comparisonId
+  activeWorkspace.value = 'cardsetCompare'
+
+  nextTick(() => {
+    selectedNodeId.value = startNodeId
+  })
+}
+
+const addCardsetComparison = () => {
+  const nextId = Math.max(0, ...design.cardsetComparisons.map(comparison => Number(comparison.id) || 0)) + 1
+  const firstCardset = design.cardsets[0]?.id || ''
+  const secondCardset = design.cardsets.find(cardset => cardset.id !== firstCardset)?.id || ''
+  const comparison = createCardsetComparison(nextId, firstCardset, secondCardset)
+  syncComparisonStartNode(comparison)
+  design.cardsetComparisons.push(comparison)
+  selectComparison(comparison.id)
+}
+
+const removeCardsetComparison = (comparisonId: string) => {
+  if (design.cardsetComparisons.length <= 1) {
+    return
+  }
+
+  design.cardsetComparisons = design.cardsetComparisons.filter(comparison => comparison.id !== comparisonId)
+  activeComparisonId.value = design.cardsetComparisons[0]?.id || null
+}
+
+const updateActiveComparisonCardsets = (cardsetA: string, cardsetB: string) => {
+  if (!activeComparison.value) {
+    return
+  }
+
+  activeComparison.value.cardsetA = cardsetA
+  activeComparison.value.cardsetB = cardsetB
+  syncComparisonStartNode(activeComparison.value)
 }
 
 const addCardsetProperty = (cardsetId: string) => {
@@ -739,6 +938,15 @@ const saveDesign = async () => {
 
   .builder-main > :last-child {
     display: none;
+  }
+
+  .builder-main.fullscreen-mode,
+  .builder-main.fullscreen-mode.with-json {
+    grid-template-columns: 260px minmax(0, 1fr) 320px;
+  }
+
+  .builder-main.fullscreen-mode > :last-child {
+    display: flex;
   }
 }
 </style>

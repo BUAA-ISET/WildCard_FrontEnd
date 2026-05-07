@@ -40,6 +40,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Background } from '@vue-flow/background'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import type { Connection, Edge, Node, NodeMouseEvent } from '@vue-flow/core'
@@ -123,7 +124,112 @@ const handleConnect = (connection: Connection) => {
     return
   }
 
-  if (edgeHasSameSourceHandle(props.edges, connection.source, connection.sourceHandle)) {
+  const sourceNode = props.nodes.find(node => node.id === connection.source)
+  const targetNode = props.nodes.find(node => node.id === connection.target)
+  const isIndexEmbedding = connection.targetHandle === 'index'
+  const isAssignmentComponent = connection.targetHandle === 'component' && targetNode?.data.componentType === 4
+  const isAssignmentRvalue = connection.targetHandle === 'rvalue' && targetNode?.data.componentType === 4
+  const isOperationOperand = ['lval', 'rval'].includes(connection.targetHandle || '')
+  const isComparisonOperand = isOperationOperand && targetNode?.data.componentType === 14
+  const isArithmeticOperand = isOperationOperand && targetNode?.data.componentType === 10
+  const isBinaryLogicOperand = isOperationOperand && targetNode?.data.componentType === 12
+  const isLogicComponentInput = connection.targetHandle === 'component' && [11, 13].includes(targetNode?.data.componentType || 0)
+  const isMethodReturnValue = connection.targetHandle === 'return' && targetNode?.data.componentType === 26
+  const isSemanticInput = isIndexEmbedding || isAssignmentComponent || isAssignmentRvalue || isOperationOperand || isLogicComponentInput || isMethodReturnValue
+
+  if (isIndexEmbedding) {
+    if (!sourceNode || !targetNode || targetNode.data.componentType !== 5) {
+      return
+    }
+
+    if (!['value', 'operation'].includes(sourceNode.data.category)) {
+      ElMessage.warning('集合访问的下标只能嵌入值组件或运算组件')
+      return
+    }
+  }
+
+  if (isAssignmentComponent) {
+    if (!sourceNode || !targetNode || targetNode.data.componentType !== 4) {
+      return
+    }
+
+    if (sourceNode.data.componentType !== 6) {
+      ElMessage.warning('赋值组件左侧只能连接属性访问组件')
+      return
+    }
+  }
+
+  if (isAssignmentRvalue) {
+    if (!sourceNode || !targetNode || targetNode.data.componentType !== 4) {
+      return
+    }
+
+    if (!['value', 'operation'].includes(sourceNode.data.category)) {
+      ElMessage.warning('赋值组件右侧只能连接值组件或运算组件')
+      return
+    }
+  }
+
+  if (isArithmeticOperand) {
+    if (!sourceNode || !targetNode) {
+      return
+    }
+
+    if (!['value', 'operation'].includes(sourceNode.data.category)) {
+      ElMessage.warning('算术运算组件只能连接值组件或运算组件作为操作数')
+      return
+    }
+  }
+
+  if (isComparisonOperand) {
+    if (!sourceNode || !targetNode) {
+      return
+    }
+
+    if (sourceNode.data.category !== 'value') {
+      ElMessage.warning('比较组件只能连接值组件作为操作数')
+      return
+    }
+  }
+
+  if (isBinaryLogicOperand) {
+    if (!sourceNode || !targetNode) {
+      return
+    }
+
+    if (sourceNode.data.category !== 'logic') {
+      ElMessage.warning('双目逻辑组件只能连接逻辑组件')
+      return
+    }
+  }
+
+  if (isOperationOperand && !isArithmeticOperand && !isComparisonOperand && !isBinaryLogicOperand) {
+    return
+  }
+
+  if (isLogicComponentInput) {
+    if (!sourceNode || !targetNode) {
+      return
+    }
+
+    if (sourceNode.data.category !== 'logic') {
+      ElMessage.warning('集合逻辑组件只能连接逻辑组件作为条件')
+      return
+    }
+  }
+
+  if (isMethodReturnValue) {
+    if (!sourceNode || !targetNode) {
+      return
+    }
+
+    if (sourceNode.data.category !== 'value') {
+      ElMessage.warning('方法返回组件只能连接值组件作为返回值')
+      return
+    }
+  }
+
+  if (!isSemanticInput && edgeHasSameSourceHandle(props.edges, connection.source, connection.sourceHandle)) {
     emit(
       'update:edges',
       props.edges.filter(edge => !(edge.source === connection.source && edge.sourceHandle === connection.sourceHandle)),
@@ -136,18 +242,60 @@ const handleConnect = (connection: Connection) => {
     target: connection.target,
     sourceHandle: connection.sourceHandle,
     targetHandle: connection.targetHandle,
-    label: connection.sourceHandle === 'true' ? '是' : connection.sourceHandle === 'false' ? '否' : undefined,
+    label: isSemanticInput
+      ? semanticEdgeLabel(connection.targetHandle, targetNode?.data.componentType)
+      : connection.sourceHandle === 'true'
+        ? '是'
+        : connection.sourceHandle === 'false'
+          ? '否'
+          : undefined,
   }
 
   const edgesWithoutSameHandle = props.edges.filter(edgeItem => {
+    if (isSemanticInput) {
+      return !(edgeItem.target === edge.target && edgeItem.targetHandle === edge.targetHandle)
+    }
+
     return !(edgeItem.source === edge.source && (edgeItem.sourceHandle || null) === (edge.sourceHandle || null))
   })
 
   emit('update:edges', [...edgesWithoutSameHandle, edge])
 }
 
+const semanticEdgeLabel = (targetHandle?: string | null, targetType?: number) => {
+  if (targetHandle === 'index') {
+    return '下标'
+  }
+
+  if (targetHandle === 'component' && targetType === 4) {
+    return '左值'
+  }
+
+  if (targetHandle === 'component' && [11, 13].includes(targetType || 0)) {
+    return '逻辑条件'
+  }
+
+  if (targetHandle === 'rvalue') {
+    return '右值'
+  }
+
+  if (targetHandle === 'lval') {
+    return '左操作数'
+  }
+
+  if (targetHandle === 'rval') {
+    return '右操作数'
+  }
+
+  if (targetHandle === 'return') {
+    return '返回值'
+  }
+
+  return undefined
+}
+
 watch(
-  () => [props.title, props.nodes[0]?.id],
+  [() => props.title, () => props.nodes[0]?.id],
   () => {
     focusStartNode()
   },
