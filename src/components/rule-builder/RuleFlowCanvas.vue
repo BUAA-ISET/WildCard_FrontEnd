@@ -25,13 +25,12 @@
       class="rule-flow"
       :default-viewport="{ x: 80, y: 60, zoom: 0.9 }"
       :nodes-draggable="true"
-      @init="focusStartNode"
       @connect="handleConnect"
       @node-click="handleNodeClick"
       @pane-click="$emit('select-node', null)"
     >
       <template #node-rule="nodeProps">
-        <RuleFlowNode v-bind="nodeProps" />
+        <RuleFlowNode v-bind="nodeProps" :ordinal="nodeOrdinalMap[nodeProps.id]" :ordinal-map="nodeOrdinalMap" />
       </template>
       <Background :gap="18" :size="1" color="#cfd4df" />
     </VueFlow>
@@ -39,13 +38,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Background } from '@vue-flow/background'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import type { Connection, Edge, Node, NodeMouseEvent } from '@vue-flow/core'
 import RuleFlowNode from './RuleFlowNode.vue'
-import { createId, edgeHasSameSourceHandle } from '../../utils/ruleBuilder'
+import { createId, edgeHasSameSourceHandle, getFlowOrdinalMap } from '../../utils/ruleBuilder'
 import type { RuleEdgeDraft, RuleNodeDraft } from '../../types/ruleBuilder'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -69,7 +68,7 @@ const emit = defineEmits<{
 }>()
 
 const flowWrapperRef = ref<InstanceType<typeof VueFlow> | null>(null)
-const { screenToFlowCoordinate, setCenter } = useVueFlow('rule-builder-flow')
+const { screenToFlowCoordinate } = useVueFlow('rule-builder-flow')
 
 const localNodes = computed<Node[]>({
   get: () => props.nodes as Node[],
@@ -80,6 +79,11 @@ const localEdges = computed<Edge[]>({
   get: () => props.edges as Edge[],
   set: value => emit('update:edges', value as RuleEdgeDraft[]),
 })
+
+const nodeOrdinalMap = computed(() => getFlowOrdinalMap({
+  nodes: props.nodes,
+  edges: props.edges,
+}))
 
 const canDeleteSelected = computed(() => {
   const selectedNode = props.nodes.find(node => node.id === props.selectedNodeId)
@@ -101,21 +105,6 @@ const getViewportCenter = () => {
   return screenToFlowCoordinate({
     x: rect.left + rect.width / 2,
     y: rect.top + rect.height / 2,
-  })
-}
-
-const focusStartNode = async () => {
-  await nextTick()
-
-  const startNode = props.nodes.find(node => node.data.fixed) || props.nodes[0]
-
-  if (!startNode) {
-    return
-  }
-
-  await setCenter(startNode.position.x + 95, startNode.position.y + 50, {
-    zoom: 0.9,
-    duration: 0,
   })
 }
 
@@ -294,17 +283,8 @@ const semanticEdgeLabel = (targetHandle?: string | null, targetType?: number) =>
   return undefined
 }
 
-watch(
-  [() => props.title, () => props.nodes[0]?.id],
-  () => {
-    focusStartNode()
-  },
-  { flush: 'post' },
-)
-
 defineExpose({
   getViewportCenter,
-  focusStartNode,
 })
 </script>
 

@@ -152,7 +152,7 @@
             </button>
             <div class="method-grid">
               <el-input v-model="method.name" placeholder="方法名" />
-              <el-select v-model="method.returns" placeholder="返回值">
+              <el-select :teleported="false" v-model="method.returns" placeholder="返回值">
                 <el-option label="无返回值" :value="null" />
                 <el-option label="整数" value="int" />
                 <el-option label="枚举" value="enum" />
@@ -167,7 +167,7 @@
               <div v-if="method.parameters.length === 0" class="empty-text">暂无参数</div>
               <div v-for="parameter in method.parameters" :key="parameter.id" class="parameter-row">
                 <el-input v-model="parameter.name" placeholder="参数名" />
-                <el-select v-model="parameter.type">
+                <el-select :teleported="false" v-model="parameter.type">
                   <el-option label="整数" value="int" />
                   <el-option label="枚举" value="enum" />
                 </el-select>

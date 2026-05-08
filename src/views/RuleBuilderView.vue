@@ -145,7 +145,6 @@ import {
   createProperty,
   createRuleObjectPool,
   exportRuleDesign,
-  getFlowOrdinalMap,
   validateRuleDesign,
 } from '../utils/ruleBuilder'
 
@@ -352,8 +351,6 @@ const getContentString = (content: Record<string, unknown>, field: string) => {
 }
 
 const syncSemanticInputs = (nodes: RuleNodeDraft[], edges: RuleEdgeDraft[]) => {
-  const ordinalMap = getFlowOrdinalMap({ nodes, edges })
-
   return nodes.map(node => {
     if (node.data.content === null) {
       return node
@@ -363,31 +360,31 @@ const syncSemanticInputs = (nodes: RuleNodeDraft[], edges: RuleEdgeDraft[]) => {
 
     if (node.data.componentType === 5) {
       const indexEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'index')
-      nextContent.index = indexEdge ? ordinalMap[indexEdge.source] || '' : ''
+      nextContent.index = indexEdge?.source || ''
     }
 
     if (node.data.componentType === 4) {
       const componentEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'component')
       const rvalueEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'rvalue')
-      nextContent.component = componentEdge ? ordinalMap[componentEdge.source] || '' : ''
-      nextContent.rvalue = rvalueEdge ? ordinalMap[rvalueEdge.source] || '' : ''
+      nextContent.component = componentEdge?.source || ''
+      nextContent.rvalue = rvalueEdge?.source || ''
     }
 
     if ([11, 13].includes(node.data.componentType)) {
       const componentEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'component')
-      nextContent.component = componentEdge ? ordinalMap[componentEdge.source] || '' : ''
+      nextContent.component = componentEdge?.source || ''
     }
 
     if ([10, 12, 14].includes(node.data.componentType)) {
       const lvalEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'lval')
       const rvalEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'rval')
-      nextContent.lval = lvalEdge ? ordinalMap[lvalEdge.source] || '' : ''
-      nextContent.rval = rvalEdge ? ordinalMap[rvalEdge.source] || '' : ''
+      nextContent.lval = lvalEdge?.source || ''
+      nextContent.rval = rvalEdge?.source || ''
     }
 
     if (node.data.componentType === 26) {
       const returnEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'return')
-      nextContent.return = activeMethod.value?.returns ? returnEdge ? ordinalMap[returnEdge.source] || '' : '' : 'void'
+      nextContent.return = activeMethod.value?.returns ? returnEdge?.source || '' : 'void'
     }
 
     if (
@@ -416,7 +413,9 @@ const updateNodes = (nodes: RuleNodeDraft[]) => {
     return
   }
 
-  activeGraph.value.nodes = syncSemanticInputs(nodes, activeGraph.value.edges)
+  const incomingIds = new Set(nodes.map(node => node.id))
+  const preservedNodes = activeGraph.value.nodes.filter(node => !incomingIds.has(node.id))
+  activeGraph.value.nodes = syncSemanticInputs([...nodes, ...preservedNodes], activeGraph.value.edges)
 }
 
 const updateEdges = (edges: FlowGraphDraft['edges']) => {

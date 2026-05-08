@@ -13,7 +13,7 @@
       <div v-if="node.data.content" class="quick-fields">
         <template v-if="node.data.componentType === 1">
           <el-form-item label="对象">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getStringField('object')"
               placeholder="先选择对象"
               filterable
@@ -28,7 +28,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="方法">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getStringField('method')"
               placeholder="选择对象后可选方法"
               :disabled="!selectedMethodCallObject"
@@ -72,8 +72,8 @@
 
         <template v-if="node.data.componentType === 2">
           <el-form-item label="集合来源">
-            <el-select
-              :model-value="getStringField('selection')"
+            <el-select :teleported="false"
+              :model-value="getNodeReferenceField('selection')"
               placeholder="选择当前视图中的属性访问组件"
               filterable
               @update:model-value="updateSortSelection"
@@ -101,7 +101,7 @@
             </div>
             <div v-if="sortProperties.length === 0" class="deal-empty">暂无排序属性</div>
             <div v-for="(property, index) in sortProperties" :key="`${index}-${property.name}`" class="sort-property-item">
-              <el-select
+              <el-select :teleported="false"
                 :model-value="property.name"
                 placeholder="选择属性"
                 :disabled="sortAvailableProperties.length === 0"
@@ -115,7 +115,7 @@
                   :value="option"
                 />
               </el-select>
-              <el-select
+              <el-select :teleported="false"
                 :model-value="property.order"
                 placeholder="排序"
                 @update:model-value="updateSortProperty(index, 'order', $event)"
@@ -154,8 +154,8 @@
 
         <template v-if="node.data.componentType === 5">
           <el-form-item label="集合来源">
-            <el-select
-              :model-value="getStringField('selection')"
+            <el-select :teleported="false"
+              :model-value="getNodeReferenceField('selection')"
               placeholder="选择当前视图中的属性访问组件"
               filterable
               @update:model-value="updateCollectionAccessSelection"
@@ -176,7 +176,7 @@
               </strong>
               <strong v-else>等待嵌入值组件或运算组件</strong>
             </div>
-            <el-input :model-value="getStringField('index')" disabled placeholder="连接下标插槽后自动填写" />
+            <el-input :model-value="getNodeReferenceDisplay('index')" disabled placeholder="连接下标插槽后自动填写" />
           </div>
           <div class="property-access-tip">
             在画布中把整数常量、属性访问、集合大小或算数运算等节点连接到集合访问节点底部的“下标插槽”，这里会自动同步 index。
@@ -185,8 +185,8 @@
 
         <template v-if="node.data.componentType === 7">
           <el-form-item label="集合来源">
-            <el-select
-              :model-value="getStringField('selection')"
+            <el-select :teleported="false"
+              :model-value="getNodeReferenceField('selection')"
               placeholder="选择当前视图中的属性访问组件"
               filterable
               @update:model-value="updateSelectionField"
@@ -203,7 +203,7 @@
 
         <template v-if="node.data.componentType === 6">
           <el-form-item label="访问来源">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getNumberField('operator')"
               placeholder="先选择访问来源"
               @update:model-value="updatePropertyAccessOperator"
@@ -214,8 +214,8 @@
 
           <template v-if="propertyAccessOperator === 0">
             <el-form-item label="对象">
-              <el-select
-                :model-value="getStringField('ident')"
+              <el-select :teleported="false"
+                :model-value="getNodeReferenceField('ident')"
                 placeholder="选择对象后再选择属性"
                 filterable
                 @update:model-value="updatePropertyAccessIdent"
@@ -229,7 +229,7 @@
               </el-select>
             </el-form-item>
             <el-form-item label="属性">
-              <el-select
+              <el-select :teleported="false"
                 :model-value="getStringField('property')"
                 placeholder="选择对象后可选属性"
                 :disabled="!selectedPropertyAccessObject"
@@ -248,8 +248,8 @@
 
           <template v-else-if="propertyAccessOperator === 1">
             <el-form-item label="组件">
-              <el-select
-                :model-value="getStringField('ident')"
+              <el-select :teleported="false"
+                :model-value="getNodeReferenceField('ident')"
                 placeholder="选择当前视图中的组件"
                 filterable
                 @update:model-value="updatePropertyAccessIdent"
@@ -263,14 +263,19 @@
               </el-select>
             </el-form-item>
             <el-form-item label="属性">
-              <el-select
+              <el-select :teleported="false"
                 :model-value="getStringField('property')"
                 placeholder="选择组件后可选属性"
-                :disabled="!selectedPropertyAccessComponent"
+                :disabled="!selectedPropertyAccessComponent || selectedComponentPropertyOptions.length === 0"
+                filterable
                 @update:model-value="updatePropertyAccessProperty"
               >
-                <el-option label="type" value="type" />
-                <el-option label="content" value="content" />
+                <el-option
+                  v-for="property in selectedComponentPropertyOptions"
+                  :key="property.value"
+                  :label="property.label"
+                  :value="property.value"
+                />
               </el-select>
             </el-form-item>
           </template>
@@ -285,10 +290,10 @@
               </template>
             </div>
             <el-form-item label="集合访问">
-              <el-input :model-value="getStringField('ident')" disabled placeholder="连接集合访问组件后自动填写" />
+              <el-input :model-value="getNodeReferenceDisplay('ident')" disabled placeholder="连接集合访问组件后自动填写" />
             </el-form-item>
             <el-form-item label="属性">
-              <el-select
+              <el-select :teleported="false"
                 :model-value="getStringField('property')"
                 placeholder="识别集合元素后可选属性"
                 :disabled="!incomingCollectionAccessNode || propertyAccessCollectionProperties.length === 0"
@@ -311,7 +316,7 @@
 
         <template v-if="node.data.componentType === 15">
           <el-form-item label="牌组">
-            <el-select
+            <el-select :teleported="false"
               :model-value="selectedCardSetIds"
               multiple
               filterable
@@ -332,7 +337,7 @@
             当前牌组已选择 {{ selectedCardSetIds.length }} 张牌，card_set 会按所选牌对象编号同步更新。
           </div>
           <el-form-item label="牌型">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getStringField('card_rule')"
               placeholder="选择已有牌型"
               filterable
@@ -380,7 +385,7 @@
             <el-input :model-value="getStringField('index')" @update:model-value="updateField('index', $event)" />
           </el-form-item>
           <el-form-item v-if="hasField('operator')" label="运算符">
-            <el-select :model-value="getNumberField('operator')" @update:model-value="updateField('operator', $event)">
+            <el-select :teleported="false" :model-value="getNumberField('operator')" @update:model-value="updateField('operator', $event)">
               <el-option v-for="option in operatorOptions" :key="option.value" :label="option.label" :value="option.value" />
             </el-select>
           </el-form-item>
@@ -403,7 +408,7 @@
             当前赋值左侧属性是整数类型，不能使用枚举常量组件。
           </div>
           <el-form-item v-else :label="`${enumAssignmentProperty.name} 取值`">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getNumberField('value')"
               placeholder="选择枚举取值"
               @update:model-value="updateEnumConstantValue"
@@ -427,7 +432,7 @@
             <strong v-else>等待连接值组件或运算组件</strong>
           </div>
           <el-form-item label="算术运算">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getNumberField('operator')"
               placeholder="选择运算"
               @update:model-value="updateArithmeticOperator"
@@ -449,7 +454,7 @@
 
         <template v-if="node.data.componentType === 11">
           <el-form-item label="逻辑操作">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getNumberField('operator')"
               placeholder="选择逻辑操作"
               @update:model-value="updateCollectionLogicOperator"
@@ -458,8 +463,8 @@
             </el-select>
           </el-form-item>
           <el-form-item label="集合来源">
-            <el-select
-              :model-value="getStringField('set')"
+            <el-select :teleported="false"
+              :model-value="getNodeReferenceField('set')"
               placeholder="选择当前视图中的属性访问组件"
               filterable
               @update:model-value="updateCollectionLogicSet"
@@ -506,7 +511,7 @@
             <strong v-else>等待连接逻辑组件</strong>
           </div>
           <el-form-item label="逻辑操作">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getNumberField('operator')"
               placeholder="选择逻辑操作"
               @update:model-value="updateBinaryLogicOperator"
@@ -535,7 +540,7 @@
             <strong v-else>等待连接值组件</strong>
           </div>
           <el-form-item label="比较操作">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getNumberField('operator')"
               placeholder="选择比较操作"
               @update:model-value="updateComparisonOperator"
@@ -572,7 +577,7 @@
             <div v-if="dealPropPairs.length === 0" class="deal-empty">暂未限制牌属性</div>
             <div v-for="(pair, index) in dealPropPairs" :key="index" class="deal-property-item">
               <el-form-item label="属性">
-                <el-select
+                <el-select :teleported="false"
                   :model-value="pair.prop_name"
                   placeholder="选择牌属性"
                   filterable
@@ -589,7 +594,7 @@
               <template v-if="getDealProperty(pair.prop_name)?.type === 'enum'">
                 <div class="deal-range-row">
                   <el-form-item label="下界">
-                    <el-select
+                    <el-select :teleported="false"
                       :model-value="pair.lower_bound"
                       placeholder="选择下界"
                       @update:model-value="updateDealRange(index, 'lower_bound', $event)"
@@ -603,7 +608,7 @@
                     </el-select>
                   </el-form-item>
                   <el-form-item label="上界">
-                    <el-select
+                    <el-select :teleported="false"
                       :model-value="pair.upper_bound"
                       placeholder="选择上界"
                       @update:model-value="updateDealRange(index, 'upper_bound', $event)"
@@ -689,7 +694,7 @@
 
         <template v-if="node.data.componentType === 26">
           <el-form-item label="返回类型">
-            <el-select
+            <el-select :teleported="false"
               :model-value="activeMethodReturn"
               placeholder="选择返回类型"
               @update:model-value="updateMethodReturnType"
@@ -733,7 +738,7 @@
                 :key="property.id"
                 :label="property.name"
               >
-                <el-select
+                <el-select :teleported="false"
                   v-if="property.type === 'enum'"
                   :model-value="getMatchPropertyValue(property)"
                   placeholder="选择枚举值"
@@ -762,7 +767,7 @@
 
         <template v-if="node.data.componentType === 29">
           <el-form-item label="比较牌型 A">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getStringField('cardsetA')"
               placeholder="选择牌型 A"
               filterable
@@ -778,7 +783,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="比较牌型 B">
-            <el-select
+            <el-select :teleported="false"
               :model-value="getStringField('cardsetB')"
               placeholder="选择牌型 B"
               filterable
@@ -855,6 +860,13 @@ interface ActionOptionDraft {
 interface SortPropertyDraft {
   name: string
   order: number
+}
+
+interface ComponentPropertyOption {
+  label: string
+  value: string
+  property?: PropertyDraft
+  elementClass?: RuleRuntimeObject['className']
 }
 
 const props = defineProps<{
@@ -967,6 +979,17 @@ const findNodeByOrdinalOrId = (ident: string) => {
   return props.graphNodes.find(node => node.id === ident || flowOrdinalMap.value[node.id] === ident) || null
 }
 
+const getNodeReferenceField = (field: string) => {
+  const value = getStringField(field)
+  return findNodeByOrdinalOrId(value)?.id || value
+}
+
+const getNodeReferenceDisplay = (field: string) => {
+  const value = getStringField(field)
+  const node = findNodeByOrdinalOrId(value)
+  return node ? `#${getNodeOrdinal(node)} ${node.data.title}` : value
+}
+
 const getPropertyNames = (properties: PropertyDraft[]) => {
   return properties.map(property => property.name).filter(Boolean)
 }
@@ -1006,9 +1029,10 @@ const availableComponentOptions = computed(() => {
   return props.graphNodes
     .filter(graphNode => graphNode.id !== props.node?.id)
     .map(graphNode => {
+      const propertyCount = getComponentPropertyOptions(graphNode).length
       return {
-        label: `#${getNodeOrdinal(graphNode)} ${graphNode.data.title}（type ${graphNode.data.componentType}）`,
-        value: getNodeOrdinal(graphNode),
+        label: `#${getNodeOrdinal(graphNode)} ${graphNode.data.title}（type ${graphNode.data.componentType}${propertyCount ? `，${propertyCount} 个属性` : ''}）`,
+        value: graphNode.id,
       }
     })
     .filter(option => option.value)
@@ -1019,7 +1043,7 @@ const propertyAccessComponentOptions = computed(() => {
     .filter(graphNode => graphNode.id !== props.node?.id && graphNode.data.componentType === 6)
     .map(graphNode => ({
       label: `#${getNodeOrdinal(graphNode)} ${graphNode.data.title}`,
-      value: getNodeOrdinal(graphNode),
+      value: graphNode.id,
     }))
     .filter(option => option.value)
 })
@@ -1100,6 +1124,120 @@ const selectedPropertyAccessComponent = computed(() => {
   return findNodeByOrdinalOrId(getStringField('ident'))
 })
 
+const createPseudoProperty = (
+  name: string,
+  type: PropertyDraft['type'] = 'int',
+  config?: PropertyDraft['config'],
+): PropertyDraft => ({
+  id: `component-property-${name}`,
+  name,
+  type,
+  default: config?.[0]?.value || 0,
+  config,
+})
+
+const getActionComponentOptions = (componentNode: RuleNodeDraft) => {
+  const options = componentNode.data.content?.options
+  return Array.isArray(options) ? options.map(normalizeActionOption) : []
+}
+
+const getCardsetById = (cardsetId: unknown) => {
+  return typeof cardsetId === 'string'
+    ? props.design.cardsets.find(cardset => cardset.id === cardsetId) || null
+    : null
+}
+
+const getCardsetPropertyOptions = (prefix: string, cardsetId: unknown): ComponentPropertyOption[] => {
+  const cardset = getCardsetById(cardsetId)
+
+  if (!cardset) {
+    return []
+  }
+
+  return cardset.properties.map(property => ({
+    label: `${prefix}.${property.name}`,
+    value: `${prefix}.${property.name}`,
+    property,
+  }))
+}
+
+const getActiveMethodOwnerClassName = () => {
+  if (!props.activeMethod) {
+    return null
+  }
+
+  return Object.values(props.design.classes).find(classDraft => {
+    return classDraft.methods.some(method => method.id === props.activeMethod?.id)
+  })?.name as RuleRuntimeObject['className'] | undefined || null
+}
+
+const getComponentPropertyOptions = (componentNode: RuleNodeDraft | null): ComponentPropertyOption[] => {
+  if (!componentNode) {
+    return []
+  }
+
+  if (componentNode.data.componentType === 17) {
+    return [{ label: '牌桌', value: '牌桌' }]
+  }
+
+  if (componentNode.data.componentType === 21) {
+    return [{ label: '用户打出的牌组', value: '用户打出的牌组', elementClass: 'card' }]
+  }
+
+  if (componentNode.data.componentType === 22) {
+    const options = getActionComponentOptions(componentNode)
+    const config = options.map(option => ({
+      display: option.name,
+      value: option.value,
+    }))
+    return [{
+      label: '用户做出的选择',
+      value: '用户做出的选择',
+      property: createPseudoProperty('用户做出的选择', 'enum', config),
+    }]
+  }
+
+  if (componentNode.data.componentType === 23) {
+    return [{ label: '玩家', value: '玩家' }]
+  }
+
+  if (componentNode.data.componentType === 25) {
+    const ownerClassName = getActiveMethodOwnerClassName()
+    return [
+      {
+        label: '调用该方法的对象',
+        value: '调用该方法的对象',
+        elementClass: ownerClassName || undefined,
+      },
+      ...(props.activeMethod?.parameters || []).map(parameter => ({
+        label: `参数：${parameter.name}`,
+        value: parameter.name,
+        property: createPseudoProperty(parameter.name, parameter.type),
+      })),
+    ]
+  }
+
+  if (componentNode.data.componentType === 27) {
+    return [{ label: '传入牌组', value: '传入牌组', elementClass: 'card' }]
+  }
+
+  if (componentNode.data.componentType === 29) {
+    return [
+      { label: '牌型A', value: '牌型A' },
+      { label: '牌型B', value: '牌型B' },
+      ...getCardsetPropertyOptions('牌型A', componentNode.data.content?.cardsetA),
+      ...getCardsetPropertyOptions('牌型B', componentNode.data.content?.cardsetB),
+    ]
+  }
+
+  return [
+    { label: 'type', value: 'type' },
+    { label: 'content', value: 'content' },
+  ]
+}
+
+const selectedComponentPropertyOptions = computed(() => getComponentPropertyOptions(selectedPropertyAccessComponent.value))
+
 const incomingCollectionAccessNode = computed(() => {
   if (!props.node || propertyAccessOperator.value !== 2) {
     return null
@@ -1124,6 +1262,8 @@ const incomingCollectionAccessOrdinal = computed(() => {
 
   return flowOrdinalMap.value[incomingCollectionAccessNode.value.id] || ''
 })
+
+const incomingCollectionAccessIdent = computed(() => incomingCollectionAccessNode.value?.id || '')
 
 const getNodeStringContentField = (targetNode: RuleNodeDraft | null, field: string) => {
   const value = targetNode?.data.content?.[field]
@@ -1162,6 +1302,13 @@ const inferCollectionElementClassFromPropertyAccessNode = (propertyAccessNode: R
     const objectIdent = getNodeStringContentField(propertyAccessNode, 'ident')
     const object = availableObjects.value.find(item => item.id === objectIdent)
     return getRuntimeArrayElementClass(object?.properties[propertyName])
+  }
+
+  if (operator === 1) {
+    const componentIdent = getNodeStringContentField(propertyAccessNode, 'ident')
+    const componentNode = componentIdent ? findNodeByOrdinalOrId(componentIdent) : null
+    const componentProperty = getComponentPropertyOptions(componentNode).find(option => option.value === propertyName)
+    return componentProperty?.elementClass || null
   }
 
   return null
@@ -1249,6 +1396,12 @@ const resolvePropertyAccessProperty = (propertyAccessNode: RuleNodeDraft | null)
     const objectIdent = getNodeStringContentField(propertyAccessNode, 'ident')
     const object = availableObjects.value.find(item => item.id === objectIdent)
     return object ? findClassProperty(object.className, propertyName) : null
+  }
+
+  if (operator === 1) {
+    const componentIdent = getNodeStringContentField(propertyAccessNode, 'ident')
+    const componentNode = componentIdent ? findNodeByOrdinalOrId(componentIdent) : null
+    return getComponentPropertyOptions(componentNode).find(option => option.value === propertyName)?.property || null
   }
 
   if (operator === 2) {
@@ -1463,7 +1616,7 @@ const updatePropertyAccessOperator = (value: string | number) => {
   const operator = Number(value)
   const nextContent = cloneContent(props.node?.data.content || {}) || {}
   nextContent.operator = Number.isNaN(operator) ? 0 : operator
-  nextContent.ident = nextContent.operator === 2 ? incomingCollectionAccessOrdinal.value : ''
+  nextContent.ident = nextContent.operator === 2 ? incomingCollectionAccessIdent.value : ''
   nextContent.property = ''
   emitContent(nextContent)
 }
@@ -1826,13 +1979,33 @@ const parameterLabel = (index: number) => {
 }
 
 watch(
-  () => [propertyAccessOperator.value, incomingCollectionAccessOrdinal.value, props.node?.id],
-  ([operator, collectionOrdinal]) => {
-    if (operator !== 2 || !collectionOrdinal || getStringField('ident') === collectionOrdinal) {
+  () => [propertyAccessOperator.value, incomingCollectionAccessIdent.value, props.node?.id],
+  ([operator, collectionIdent]) => {
+    if (operator !== 2 || !collectionIdent || getStringField('ident') === collectionIdent) {
       return
     }
 
-    updateField('ident', collectionOrdinal)
+    updateField('ident', collectionIdent)
+  },
+)
+
+watch(
+  () => [
+    props.node?.id,
+    propertyAccessOperator.value,
+    getStringField('ident'),
+    ...selectedComponentPropertyOptions.value.map(option => option.value),
+  ],
+  () => {
+    if (props.node?.data.componentType !== 6 || propertyAccessOperator.value !== 1) {
+      return
+    }
+
+    const property = getStringField('property')
+
+    if (property && !selectedComponentPropertyOptions.value.some(option => option.value === property)) {
+      updateField('property', '')
+    }
   },
 )
 
@@ -1843,7 +2016,7 @@ watch(
       return
     }
 
-    const nextIndex = getNodeOrdinal(incomingIndexNode.value)
+    const nextIndex = incomingIndexNode.value.id
 
     if (nextIndex && getStringField('index') !== nextIndex) {
       updateField('index', nextIndex)

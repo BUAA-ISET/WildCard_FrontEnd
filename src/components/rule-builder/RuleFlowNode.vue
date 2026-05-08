@@ -2,6 +2,7 @@
   <div class="rule-node" :class="[`category-${data.category}`, { selected }]">
     <Handle v-if="!data.fixed" type="target" :position="Position.Left" />
     <div class="node-top">
+      <span class="node-ordinal">#{{ ordinal || '?' }}</span>
       <span class="node-type">type {{ data.componentType }}</span>
       <span class="node-category">{{ categoryLabel }}</span>
     </div>
@@ -10,67 +11,67 @@
     <div v-if="data.componentType === 4" class="assignment-slots">
       <div class="assignment-slot left-slot" :class="{ filled: assignmentComponentValue }">
         <span class="slot-label">左值属性</span>
-        <strong>{{ assignmentComponentValue ? `#${assignmentComponentValue}` : '连接属性访问组件' }}</strong>
+        <strong>{{ assignmentComponentValue ? `#${assignmentComponentDisplay}` : '连接属性访问组件' }}</strong>
         <Handle id="component" type="target" :position="Position.Left" class="assignment-handle component-handle" />
       </div>
       <div class="assignment-slot right-slot" :class="{ filled: assignmentRvalueValue }">
         <span class="slot-label">右值</span>
-        <strong>{{ assignmentRvalueValue ? `#${assignmentRvalueValue}` : '连接值/运算组件' }}</strong>
+        <strong>{{ assignmentRvalueValue ? `#${assignmentRvalueDisplay}` : '连接值/运算组件' }}</strong>
         <Handle id="rvalue" type="target" :position="Position.Bottom" class="assignment-handle rvalue-handle" />
       </div>
     </div>
     <div v-if="data.componentType === 5" class="index-slot" :class="{ filled: indexValue }">
       <span class="slot-label">下标插槽</span>
-      <strong>{{ indexValue ? `#${indexValue}` : '连接值/运算组件' }}</strong>
+      <strong>{{ indexValue ? `#${indexDisplay}` : '连接值/运算组件' }}</strong>
       <Handle id="index" type="target" :position="Position.Bottom" class="index-handle" />
     </div>
     <div v-if="data.componentType === 10" class="operation-slots">
       <div class="operation-slot" :class="{ filled: operationLvalValue }">
         <span class="slot-label">左操作数</span>
-        <strong>{{ operationLvalValue ? `#${operationLvalValue}` : '连接值/运算组件' }}</strong>
+        <strong>{{ operationLvalValue ? `#${operationLvalDisplay}` : '连接值/运算组件' }}</strong>
         <Handle id="lval" type="target" :position="Position.Bottom" class="operation-handle lval-handle" />
       </div>
       <div class="operation-symbol">{{ operationSymbol }}</div>
       <div class="operation-slot" :class="{ filled: operationRvalValue }">
         <span class="slot-label">右操作数</span>
-        <strong>{{ operationRvalValue ? `#${operationRvalValue}` : '连接值/运算组件' }}</strong>
+        <strong>{{ operationRvalValue ? `#${operationRvalDisplay}` : '连接值/运算组件' }}</strong>
         <Handle id="rval" type="target" :position="Position.Bottom" class="operation-handle rval-handle" />
       </div>
     </div>
     <div v-if="data.componentType === 14" class="comparison-slots">
       <div class="comparison-slot" :class="{ filled: comparisonLvalValue }">
         <span class="slot-label">左比较值</span>
-        <strong>{{ comparisonLvalValue ? `#${comparisonLvalValue}` : '连接值组件' }}</strong>
+        <strong>{{ comparisonLvalValue ? `#${comparisonLvalDisplay}` : '连接值组件' }}</strong>
         <Handle id="lval" type="target" :position="Position.Bottom" class="comparison-handle comparison-lval-handle" />
       </div>
       <div class="comparison-symbol">{{ comparisonSymbol }}</div>
       <div class="comparison-slot" :class="{ filled: comparisonRvalValue }">
         <span class="slot-label">右比较值</span>
-        <strong>{{ comparisonRvalValue ? `#${comparisonRvalValue}` : '连接值组件' }}</strong>
+        <strong>{{ comparisonRvalValue ? `#${comparisonRvalDisplay}` : '连接值组件' }}</strong>
         <Handle id="rval" type="target" :position="Position.Bottom" class="comparison-handle comparison-rval-handle" />
       </div>
     </div>
     <div v-if="[11, 13].includes(data.componentType)" class="logic-input-slot" :class="{ filled: logicComponentValue }">
       <span class="slot-label">逻辑条件</span>
-      <strong>{{ logicComponentValue ? `#${logicComponentValue}` : '连接逻辑组件' }}</strong>
+      <strong>{{ logicComponentValue ? `#${logicComponentDisplay}` : '连接逻辑组件' }}</strong>
       <Handle id="component" type="target" :position="Position.Bottom" class="logic-input-handle" />
     </div>
     <div v-if="data.componentType === 12" class="binary-logic-slots">
       <div class="binary-logic-slot" :class="{ filled: binaryLogicLvalValue }">
         <span class="slot-label">左逻辑</span>
-        <strong>{{ binaryLogicLvalValue ? `#${binaryLogicLvalValue}` : '连接逻辑组件' }}</strong>
+        <strong>{{ binaryLogicLvalValue ? `#${binaryLogicLvalDisplay}` : '连接逻辑组件' }}</strong>
         <Handle id="lval" type="target" :position="Position.Bottom" class="binary-logic-handle binary-lval-handle" />
       </div>
       <div class="binary-logic-symbol">{{ binaryLogicSymbol }}</div>
       <div class="binary-logic-slot" :class="{ filled: binaryLogicRvalValue }">
         <span class="slot-label">右逻辑</span>
-        <strong>{{ binaryLogicRvalValue ? `#${binaryLogicRvalValue}` : '连接逻辑组件' }}</strong>
+        <strong>{{ binaryLogicRvalValue ? `#${binaryLogicRvalDisplay}` : '连接逻辑组件' }}</strong>
         <Handle id="rval" type="target" :position="Position.Bottom" class="binary-logic-handle binary-rval-handle" />
       </div>
     </div>
     <div v-if="data.componentType === 26" class="return-value-slot" :class="{ filled: returnValue }">
       <span class="slot-label">返回值</span>
-      <strong>{{ returnValue && returnValue !== 'void' ? `#${returnValue}` : '连接值组件' }}</strong>
+      <strong>{{ returnValue && returnValue !== 'void' ? `#${returnDisplay}` : '连接值组件' }}</strong>
       <Handle id="return" type="target" :position="Position.Bottom" class="return-value-handle" />
     </div>
     <template v-if="data.componentType === 16">
@@ -90,6 +91,8 @@ import type { RuleNodeData } from '../../types/ruleBuilder'
 
 const props = defineProps<{
   data: RuleNodeData
+  ordinal?: string
+  ordinalMap?: Record<string, string>
   selected?: boolean
 }>()
 
@@ -110,22 +113,28 @@ const indexValue = computed(() => {
   const value = props.data.content?.index
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const displayReference = (value: string) => props.ordinalMap?.[value] || value
+const indexDisplay = computed(() => displayReference(indexValue.value))
 const assignmentComponentValue = computed(() => {
   const value = props.data.content?.component
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const assignmentComponentDisplay = computed(() => displayReference(assignmentComponentValue.value))
 const assignmentRvalueValue = computed(() => {
   const value = props.data.content?.rvalue
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const assignmentRvalueDisplay = computed(() => displayReference(assignmentRvalueValue.value))
 const operationLvalValue = computed(() => {
   const value = props.data.content?.lval
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const operationLvalDisplay = computed(() => displayReference(operationLvalValue.value))
 const operationRvalValue = computed(() => {
   const value = props.data.content?.rval
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const operationRvalDisplay = computed(() => displayReference(operationRvalValue.value))
 const operationSymbol = computed(() => {
   const operatorMap = ['+', '-', '*', '/', '%']
   const operator = props.data.content?.operator
@@ -135,10 +144,12 @@ const comparisonLvalValue = computed(() => {
   const value = props.data.content?.lval
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const comparisonLvalDisplay = computed(() => displayReference(comparisonLvalValue.value))
 const comparisonRvalValue = computed(() => {
   const value = props.data.content?.rval
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const comparisonRvalDisplay = computed(() => displayReference(comparisonRvalValue.value))
 const comparisonSymbol = computed(() => {
   const operatorMap = ['==', '>', '<', '>=', '<=']
   const operator = props.data.content?.operator
@@ -148,14 +159,17 @@ const logicComponentValue = computed(() => {
   const value = props.data.content?.component
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const logicComponentDisplay = computed(() => displayReference(logicComponentValue.value))
 const binaryLogicLvalValue = computed(() => {
   const value = props.data.content?.lval
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const binaryLogicLvalDisplay = computed(() => displayReference(binaryLogicLvalValue.value))
 const binaryLogicRvalValue = computed(() => {
   const value = props.data.content?.rval
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const binaryLogicRvalDisplay = computed(() => displayReference(binaryLogicRvalValue.value))
 const binaryLogicSymbol = computed(() => {
   const operator = props.data.content?.operator
   return operator === 1 ? '或' : '与'
@@ -164,6 +178,7 @@ const returnValue = computed(() => {
   const value = props.data.content?.return
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
+const returnDisplay = computed(() => displayReference(returnValue.value))
 </script>
 
 <style scoped>
@@ -220,8 +235,24 @@ const returnValue = computed(() => {
 }
 
 .node-type,
-.node-category {
+.node-category,
+.node-ordinal {
   white-space: nowrap;
+}
+
+.node-ordinal {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: #252633;
+  color: #fff;
+  font-weight: 800;
+}
+
+.node-category {
+  margin-left: auto;
 }
 
 .node-title {

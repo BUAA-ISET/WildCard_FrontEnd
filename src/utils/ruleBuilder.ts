@@ -576,6 +576,7 @@ export const exportFlowGraph = (graph: FlowGraphDraft): Record<string, ExportedF
 
   getSortedNodes(graph).forEach(node => {
     const content = cloneContent(node.data.content)
+    normalizeComponentReferencesForExport(node.data.componentType, content, ordinalMap)
     const outgoingEdges = getOutgoingEdges(graph, node.id)
     const firstTarget = outgoingEdges[0]?.target
     const nextOrdinal = firstTarget ? ordinalMap[firstTarget] : ''
@@ -615,6 +616,43 @@ export const exportFlowGraph = (graph: FlowGraphDraft): Record<string, ExportedF
 
 const shouldWriteNext = (componentType: number) => {
   return ![5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 18, 24, 26, 28, 30].includes(componentType)
+}
+
+const toExportOrdinal = (value: unknown, ordinalMap: Record<string, string>) => {
+  return typeof value === 'string' && ordinalMap[value] ? ordinalMap[value] : value
+}
+
+const normalizeComponentReferencesForExport = (
+  componentType: number,
+  content: Record<string, unknown> | null,
+  ordinalMap: Record<string, string>,
+) => {
+  if (!content) {
+    return
+  }
+
+  const referenceFieldsByType: Record<number, string[]> = {
+    2: ['selection'],
+    4: ['component', 'rvalue'],
+    5: ['selection', 'index'],
+    7: ['selection'],
+    10: ['lval', 'rval'],
+    11: ['set', 'component'],
+    12: ['lval', 'rval'],
+    13: ['component'],
+    14: ['lval', 'rval'],
+    26: ['return'],
+  }
+
+  const fields = referenceFieldsByType[componentType] || []
+
+  fields.forEach(field => {
+    content[field] = toExportOrdinal(content[field], ordinalMap)
+  })
+
+  if (componentType === 6 && [1, 2].includes(Number(content.operator))) {
+    content.ident = toExportOrdinal(content.ident, ordinalMap)
+  }
 }
 
 export const exportRuleDesign = (design: RuleDesignDraft): ExportedRuleDesign => ({
