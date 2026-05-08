@@ -3,6 +3,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 import InfoLayout from '../layouts/InfoLayout.vue'
 import HomeView from '../views/HomeView.vue'
 import About from '../views/About.vue'
+import Contact from '../views/Contact.vue'
 import CardStyleView from '../views/CardStyleView.vue'
 import BattleView from '../views/BattleView.vue'
 import ReadyRoomView from '../views/ReadyRoomView.vue'
@@ -77,7 +78,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'contact',
-        component: { template: '<div>Contact</div>' }
+        component: Contact
       },
       {
         path: 'help',
