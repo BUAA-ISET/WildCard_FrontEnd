@@ -3,6 +3,7 @@ import type { ExportedFlowNode, ExportedPropertyMap } from '../types/ruleBuilder
 export interface PlayCard {
   id: string
   rank: string
+  point?: number
   suit?: string
   properties?: Record<string, number | string | boolean>
 }
@@ -32,6 +33,7 @@ export interface RoomRuleResponse {
 export interface RoundPlayRecord {
   cardsetId: string
   cardsetName: string
+  cards: PlayCard[]
   properties: Record<string, unknown>
 }
 
@@ -49,11 +51,14 @@ export interface CardPlayValidationResult {
 }
 
 type RuntimeValue = unknown
+type CompareFlowResult = number | boolean | null
 
 interface RuntimeContext {
   cards: PlayCard[]
   flow: Record<string, ExportedFlowNode>
   cache: Map<string, RuntimeValue>
+  currentRoundPlay?: RoundPlayRecord
+  previousRoundPlay?: RoundPlayRecord
 }
 
 function hasDuplicateCardIds(cards: PlayCard[]) {
@@ -64,22 +69,69 @@ function normalizeReference(value: unknown) {
   return String(value ?? '').trim()
 }
 
-function readCardProperty(card: PlayCard, property: string) {
+function readCardPoint(card: PlayCard) {
+  const point = card.point
+    ?? card.properties?.point
+    ?? card.properties?.rank
+    ?? card.properties?.['点数']
+
+  return typeof point === 'number' ? point : undefined
+}
+
+function readCardProperty(card: PlayCard, property: string): number | string | boolean | undefined {
   if (property === 'id') {
     return card.id
   }
-  if (property === 'rank' || property === '点数' || property === '鐐规暟') {
-    return card.properties?.rank ?? card.properties?.point ?? card.rank
+  if (property === 'rank' || property === 'point' || property === '点数') {
+    const point = readCardPoint(card)
+    return point !== undefined ? point : 0
   }
-  if (property === 'suit' || property === '花色' || property === '鑺辫壊') {
+  if (property === 'suit' || property === '花色') {
     return card.properties?.suit ?? card.suit
   }
-
   return card.properties?.[property]
 }
 
+function readRuntimeProperty(target: RuntimeValue, property: string): RuntimeValue {
+  if (Array.isArray(target)) {
+    return target.map((item) => readRuntimeProperty(item, property))
+  }
+  if (typeof target !== 'object' || target === null) {
+    return undefined
+  }
+
+  const record = target as Record<string, unknown>
+  if ('rank' in record || 'suit' in record) {
+    return readCardProperty(target as PlayCard, property)
+  }
+  if (property === 'cards') {
+    return record.cards
+  }
+  if (property === 'cardsetId') {
+    return record.cardsetId
+  }
+  if (property === 'cardsetName') {
+    return record.cardsetName
+  }
+
+  const properties = record.properties
+  if (typeof properties === 'object' && properties !== null && property in properties) {
+    return (properties as Record<string, unknown>)[property]
+  }
+
+  return record[property]
+}
+
 function isSelectedCardSetReference(value: string) {
-  return ['cards', 'card_set', 'selectedCards', 'selected_cards', '初始牌组', '牌组', '鐗岀粍'].includes(value)
+  return ['cards', 'card_set', 'selectedCards', 'selected_cards', '初始牌组', '牌组'].includes(value)
+}
+
+function isCurrentRoundReference(value: string) {
+  return ['A', 'a', 'cardsetA', 'cardset_a', 'currentRound', 'current_round', '牌型A'].includes(value)
+}
+
+function isPreviousRoundReference(value: string) {
+  return ['B', 'b', 'cardsetB', 'cardset_b', 'previousRound', 'previous_round', '牌型B'].includes(value)
 }
 
 function resolveValue(value: unknown, context: RuntimeContext): RuntimeValue {
@@ -93,6 +145,12 @@ function resolveValue(value: unknown, context: RuntimeContext): RuntimeValue {
   }
   if (isSelectedCardSetReference(reference)) {
     return context.cards
+  }
+  if (isCurrentRoundReference(reference)) {
+    return context.currentRoundPlay
+  }
+  if (isPreviousRoundReference(reference)) {
+    return context.previousRoundPlay
   }
   if (context.flow[reference]) {
     return evaluateNode(reference, context)
@@ -161,13 +219,7 @@ function evaluateNode(nodeId: string, context: RuntimeContext): RuntimeValue {
     case 6: {
       const property = normalizeReference(content.property)
       const ident = resolveValue(content.ident, context)
-      if (Array.isArray(ident)) {
-        result = ident.map((card) => readCardProperty(card, property))
-      } else if (typeof ident === 'object' && ident !== null) {
-        result = readCardProperty(ident as PlayCard, property)
-      } else {
-        result = undefined
-      }
+      result = readRuntimeProperty(ident, property)
       break
     }
     case 7: {
@@ -268,6 +320,7 @@ function recognizeCardPlay(cards: PlayCard[], rule: RoomRuleDefinition): RoundPl
       return {
         cardsetId,
         cardsetName: cardset.name,
+        cards,
         properties: result.properties,
       }
     }
@@ -276,13 +329,83 @@ function recognizeCardPlay(cards: PlayCard[], rule: RoomRuleDefinition): RoundPl
   return null
 }
 
-function canBeatPreviousRound(currentRoundPlay: RoundPlayRecord, previousRoundPlay: RoundPlayRecord, rule: RoomRuleDefinition) {
-  if (currentRoundPlay.cardsetId === previousRoundPlay.cardsetId) {
-    return true
+function executeCompareFlow(
+  currentRoundPlay: RoundPlayRecord,
+  previousRoundPlay: RoundPlayRecord,
+  flow: Record<string, ExportedFlowNode>,
+): CompareFlowResult {
+  const context: RuntimeContext = {
+    cards: currentRoundPlay.cards,
+    flow,
+    cache: new Map<string, RuntimeValue>(),
+    currentRoundPlay,
+    previousRoundPlay,
+  }
+  let currentNodeId = '1'
+  const visited = new Set<string>()
+
+  while (currentNodeId && flow[currentNodeId] && !visited.has(currentNodeId)) {
+    visited.add(currentNodeId)
+    const node = flow[currentNodeId]
+
+    if (node.type === 16) {
+      const branch = Boolean(resolveValue(node.content?.condition, context))
+      currentNodeId = getNextNodeId(node, branch)
+      continue
+    }
+
+    if (node.type === 30) {
+      const result = node.content?.result
+      if (typeof result === 'boolean') {
+        return result
+      }
+      if (typeof result === 'number') {
+        return result
+      }
+      if (typeof result === 'string') {
+        const normalizedResult = result.trim().toLowerCase()
+        if (normalizedResult === 'true') {
+          return true
+        }
+        if (normalizedResult === 'false') {
+          return false
+        }
+        if (normalizedResult !== '' && !Number.isNaN(Number(normalizedResult))) {
+          return Number(normalizedResult)
+        }
+      }
+
+      return null
+    }
+
+    evaluateNode(currentNodeId, context)
+    currentNodeId = getNextNodeId(node)
   }
 
+  return null
+}
+
+function isCurrentRoundHigher(compareResult: CompareFlowResult) {
+  if (typeof compareResult === 'boolean') {
+    return compareResult
+  }
+  if (typeof compareResult === 'number') {
+    return compareResult > 0
+  }
+  return false
+}
+
+function canBeatPreviousRound(currentRoundPlay: RoundPlayRecord, previousRoundPlay: RoundPlayRecord, rule: RoomRuleDefinition) {
   const currentCardset = rule.cardsets[currentRoundPlay.cardsetId]
-  return currentCardset?.successors.includes(previousRoundPlay.cardsetId) || false
+  if (!currentCardset) {
+    return false
+  }
+
+  if (currentRoundPlay.cardsetId === previousRoundPlay.cardsetId) {
+    return isCurrentRoundHigher(executeCompareFlow(currentRoundPlay, previousRoundPlay, currentCardset.compare_flow))
+  }
+
+  return currentCardset.successors.includes(previousRoundPlay.cardsetId)
 }
 
 export function validateCardPlay({

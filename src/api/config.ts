@@ -20,6 +20,7 @@ export const API_CONFIG = {
             join: '/api/room/join',
             checkPassword: '/api/room/check-password',
             getCurrent: '/api/room/current',
+            getRule: '/api/room/rule/get',
             leave: '/api/room/leave',
         }
     }

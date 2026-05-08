@@ -2,6 +2,7 @@ import { apiPost, apiGet } from './request'
 import { API_CONFIG } from './config'
 import defaultAvatarUrl from '../assets/default-avatar.svg'
 import { scopedStorageKey, USER_STORAGE_KEY } from '../utils/storageNamespace'
+import type { RoomRuleResponse } from '../utils/cardPlayRules'
 
 export interface Room {
     id: string
@@ -56,6 +57,57 @@ const mockRuleOptions: GameRuleOption[] = [
         description: '6 players, faster and more chaotic.',
     },
 ]
+
+const mockRoomRules: Record<string, RoomRuleResponse['rule']> = {
+    classic: {
+        name: 'standard-game',
+        player_count: 4,
+        classes: {},
+        cardsets: {
+            '1': {
+                name: '任意出牌',
+                properties: {},
+                build_flow: {
+                    '1': {
+                        type: 28,
+                        content: {
+                            result: 1,
+                            properties: {},
+                        },
+                    },
+                },
+                compare_flow: {},
+                successors: [],
+            },
+        },
+        match_flow: {},
+        end_flow: {},
+    },
+    party: {
+        name: 'party-game',
+        player_count: 6,
+        classes: {},
+        cardsets: {
+            '1': {
+                name: '任意出牌',
+                properties: {},
+                build_flow: {
+                    '1': {
+                        type: 28,
+                        content: {
+                            result: 1,
+                            properties: {},
+                        },
+                    },
+                },
+                compare_flow: {},
+                successors: [],
+            },
+        },
+        match_flow: {},
+        end_flow: {},
+    },
+}
 
 export const ROOM_STORAGE_KEY = scopedStorageKey('mock-rooms')
 const PLAYER_STORAGE_KEY = scopedStorageKey('player-id')
@@ -363,6 +415,39 @@ export const roomApi = {
                 return { success: true, data: cloneRoom(room) }
             },
         })
+    },
+
+    async getRoomRule(roomId?: string): Promise<{ success: boolean; data?: RoomRuleResponse; message?: string }> {
+        const query = roomId ? `?room_id=${encodeURIComponent(roomId)}` : ''
+        const result = await apiGet<RoomRuleResponse | { success: boolean; data?: RoomRuleResponse; message?: string }>(API_CONFIG.endpoints.room.getRule + query, {
+            mockDelay: 200,
+            mockFn: () => {
+                const rooms = readRooms()
+                const playerId = getCurrentPlayerId()
+                const room = roomId
+                    ? Object.values(rooms).find((item) => item.id === roomId || item.code === roomId)
+                    : getRoomByPlayer(rooms, playerId)
+                const rule = room ? mockRoomRules[room.ruleId] : null
+
+                if (!room || !rule) {
+                    return { success: false, message: '规则不存在' }
+                }
+
+                return {
+                    success: true,
+                    data: {
+                        room_id: room.id,
+                        rule,
+                    },
+                }
+            },
+        })
+
+        if ('room_id' in result && 'rule' in result) {
+            return { success: true, data: result }
+        }
+
+        return result
     },
 
     async setReady(isReady: boolean): Promise<{ success: boolean; data?: Room | null; message?: string }> {
