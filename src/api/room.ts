@@ -412,6 +412,7 @@ export const roomApi = {
                     return { success: false, data: null, message: 'Room does not exist.' }
                 }
 
+                setCurrentRoomCode(room.code)
                 return { success: true, data: cloneRoom(room) }
             },
         })
@@ -424,19 +425,22 @@ export const roomApi = {
             mockFn: () => {
                 const rooms = readRooms()
                 const playerId = getCurrentPlayerId()
+                const currentCode = getCurrentRoomCode()
                 const room = roomId
                     ? Object.values(rooms).find((item) => item.id === roomId || item.code === roomId)
-                    : getRoomByPlayer(rooms, playerId)
-                const rule = room ? mockRoomRules[room.ruleId] : null
+                    : currentCode
+                        ? rooms[currentCode] || getRoomByPlayer(rooms, playerId)
+                        : getRoomByPlayer(rooms, playerId)
+                const rule = room ? mockRoomRules[room.ruleId] || mockRoomRules.classic : mockRoomRules.classic
 
-                if (!room || !rule) {
+                if (!rule) {
                     return { success: false, message: '规则不存在' }
                 }
 
                 return {
                     success: true,
                     data: {
-                        room_id: room.id,
+                        room_id: room?.id || roomId || 'mock-room',
                         rule,
                     },
                 }
