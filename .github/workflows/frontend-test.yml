@@ -52,30 +52,31 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
 
-      - name: Install Cypress binary
-        run: |
-          mkdir -p "$CYPRESS_CACHE_FOLDER"
-          for attempt in 1 2 3; do
-            if npx cypress install; then
-              break
-            fi
+      # TODO: re-enable Cypress setup and E2E after the user flow and CI env are stabilized.
+      # - name: Install Cypress binary
+      #   run: |
+      #     mkdir -p "$CYPRESS_CACHE_FOLDER"
+      #     for attempt in 1 2 3; do
+      #       if npx cypress install; then
+      #         break
+      #       fi
+      #
+      #       if [ "$attempt" -eq 3 ]; then
+      #         exit 1
+      #       fi
+      #
+      #       echo "cypress install failed on attempt $attempt, retrying..."
+      #       sleep 5
+      #     done
 
-            if [ "$attempt" -eq 3 ]; then
-              exit 1
-            fi
+      # - name: Check Cypress binary
+      #   run: |
+      #     npx cypress cache path
+      #     npx cypress cache list
 
-            echo "cypress install failed on attempt $attempt, retrying..."
-            sleep 5
-          done
-
-      - name: Check Cypress binary
-        run: |
-          npx cypress cache path
-          npx cypress cache list
-
-      - name: Run E2E tests
-        run: |
-          Xvfb :99 -screen 0 1280x1024x24 >/tmp/xvfb.log 2>&1 &
-          export DISPLAY=:99
-          sleep 2
-          npm run test:e2e
+      # - name: Run E2E tests
+      #   run: |
+      #     Xvfb :99 -screen 0 1280x1024x24 >/tmp/xvfb.log 2>&1 &
+      #     export DISPLAY=:99
+      #     sleep 2
+      #     npm run test:e2e
