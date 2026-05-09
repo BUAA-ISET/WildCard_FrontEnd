@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { apiGet, apiPost, apiPut } from './request'
-import { API_CONFIG, shouldUseMockApi } from './config'
+import { API_CONFIG, shouldUseMockApi, shouldUseUserMockApi } from './config'
 import { scopedStorageKey, USER_STORAGE_KEY } from '../utils/storageNamespace'
 
 export interface User {
@@ -45,6 +45,13 @@ type ApiResult<T = undefined> = {
   data?: T
   message?: string
   debugCode?: string
+}
+
+type BackendUser = {
+  id: string
+  username: string
+  email: string
+  avatar?: string
 }
 
 const VERIFICATION_CODE_TTL = 5 * 60 * 1000
@@ -171,9 +178,23 @@ function setCurrentUser(user: User | null) {
   saveUserToStorage(user)
 }
 
+function normalizeBackendUser(user: BackendUser | null | undefined): User | null {
+  if (!user) {
+    return null
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    avatar: user.avatar || '',
+  }
+}
+
 export const userApi = {
   async login(params: LoginParams): Promise<ApiResult<User>> {
     return apiPost(API_CONFIG.endpoints.user.login, params, {
+      useMock: shouldUseUserMockApi(),
       mockDelay: 500,
       mockFn: () => {
         const email = normalizeEmail(params.email)
@@ -187,11 +208,26 @@ export const userApi = {
         setCurrentUser(user)
         return { success: true, data: user }
       },
+    }).then((result: ApiResult<BackendUser | User>) => {
+      if (!result.success) {
+        return result as ApiResult<User>
+      }
+
+      const user = normalizeBackendUser(result.data as BackendUser) || (result.data as User | undefined)
+      if (user) {
+        setCurrentUser(user)
+      }
+
+      return {
+        ...result,
+        data: user || undefined,
+      }
     })
   },
 
   async sendVerificationCode(params: SendVerificationCodeParams): Promise<ApiResult> {
     return apiPost(API_CONFIG.endpoints.user.sendVerificationCode, params, {
+      useMock: shouldUseUserMockApi(),
       mockDelay: 500,
       mockFn: () => {
         const email = normalizeEmail(params.email)
@@ -221,6 +257,7 @@ export const userApi = {
 
   async register(params: RegisterParams): Promise<ApiResult<User>> {
     return apiPost(API_CONFIG.endpoints.user.register, params, {
+      useMock: shouldUseUserMockApi(),
       mockDelay: 500,
       mockFn: () => {
         const email = normalizeEmail(params.email)
@@ -258,28 +295,61 @@ export const userApi = {
         setCurrentUser(user)
         return { success: true, data: user }
       },
+    }).then((result: ApiResult<BackendUser | User>) => {
+      if (!result.success) {
+        return result as ApiResult<User>
+      }
+
+      const user = normalizeBackendUser(result.data as BackendUser) || (result.data as User | undefined)
+      if (user) {
+        setCurrentUser(user)
+      }
+
+      return {
+        ...result,
+        data: user || undefined,
+      }
     })
   },
 
   async logout(): Promise<ApiResult> {
     return apiPost(API_CONFIG.endpoints.user.logout, {}, {
+      useMock: shouldUseUserMockApi(),
       mockDelay: 200,
       mockFn: () => {
         setCurrentUser(null)
         return { success: true }
       },
+    }).then((result: ApiResult) => {
+      if (result.success) {
+        setCurrentUser(null)
+      }
+      return result
     })
   },
 
   async getCurrentUser(): Promise<ApiResult<User | null>> {
     return apiGet(API_CONFIG.endpoints.user.current, {
+      useMock: shouldUseUserMockApi(),
       mockDelay: 200,
       mockFn: () => ({ success: true, data: currentUser.value }),
+    }).then((result: ApiResult<BackendUser | User | null>) => {
+      if (!result.success) {
+        return result as ApiResult<User | null>
+      }
+
+      const user = normalizeBackendUser(result.data as BackendUser | null) ?? (result.data as User | null | undefined) ?? null
+      setCurrentUser(user)
+      return {
+        ...result,
+        data: user,
+      }
     })
   },
 
   async updateUsername(newUsername: string): Promise<ApiResult<User>> {
     return apiPut(API_CONFIG.endpoints.user.updateUsername, { username: newUsername }, {
+      useMock: shouldUseUserMockApi(),
       mockDelay: 300,
       mockFn: () => {
         const username = newUsername.trim()
@@ -308,11 +378,26 @@ export const userApi = {
         setCurrentUser(user)
         return { success: true, data: user }
       },
+    }).then((result: ApiResult<BackendUser | User>) => {
+      if (!result.success) {
+        return result as ApiResult<User>
+      }
+
+      const user = normalizeBackendUser(result.data as BackendUser) || (result.data as User | undefined)
+      if (user) {
+        setCurrentUser(user)
+      }
+
+      return {
+        ...result,
+        data: user || undefined,
+      }
     })
   },
 
   async updatePassword(params: UpdatePasswordParams): Promise<ApiResult> {
     return apiPut(API_CONFIG.endpoints.user.updatePassword, params, {
+      useMock: shouldUseUserMockApi(),
       mockDelay: 300,
       mockFn: () => {
         if (!params.currentPassword || !params.newPassword) {

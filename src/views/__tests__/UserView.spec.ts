@@ -18,6 +18,7 @@ vi.mock('../../api/user', () => ({
 
 vi.mock('../../api/config', () => ({
   shouldUseMockApi: () => false,
+  shouldUseUserMockApi: () => false,
 }))
 
 describe('UserView.vue', () => {

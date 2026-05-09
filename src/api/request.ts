@@ -49,7 +49,8 @@ export async function apiRequest<T = any>(
         body: body ? JSON.stringify(body) : undefined,
     })
 
-    const result = await response.json()
+    const text = await response.text()
+    const result = text ? JSON.parse(text) : {}
 
     if (!response.ok && typeof result === 'object' && result !== null) {
         return {
