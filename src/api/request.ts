@@ -42,6 +42,7 @@ export async function apiRequest<T = any>(
     }
 
     const url = getApiUrl(endpoint)
+
     let response: Response
     try {
         response = await fetch(url, {
@@ -59,6 +60,7 @@ export async function apiRequest<T = any>(
             message: error instanceof Error ? error.message : 'Network request failed'
         } as T
     }
+
 
     const text = await response.text()
     const result = text ? JSON.parse(text) : {}

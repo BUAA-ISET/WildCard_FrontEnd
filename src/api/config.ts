@@ -38,6 +38,9 @@ export const API_CONFIG = {
             getCurrent: '/api/room/current',
             getRule: '/api/room/rule/get',
             leave: '/api/room/leave',
+        },
+        game: {
+            getCurrent: '/api/games/current',
         }
     }
 }
@@ -49,3 +52,5 @@ export const getApiUrl = (endpoint: string): string => {
 export const shouldUseMockApi = (): boolean => API_CONFIG.USE_MOCK
 export const shouldUseUserMockApi = (): boolean => API_CONFIG.userUseMock ?? API_CONFIG.USE_MOCK
 export const shouldUseRoomMockApi = (): boolean => API_CONFIG.roomUseMock ?? API_CONFIG.USE_MOCK
+export const shouldUseGameMockApi = (): boolean => API_CONFIG.gameUseMock ?? API_CONFIG.USE_MOCK
+
