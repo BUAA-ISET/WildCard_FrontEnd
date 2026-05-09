@@ -3,6 +3,7 @@ export const API_CONFIG = {
     // 默认保留房间/规则 mock，仅优先打通用户系统
     USE_MOCK: true,
     userUseMock: false,
+    roomUseMock: true,
 
     endpoints: {
         user: {
@@ -33,3 +34,4 @@ export const getApiUrl = (endpoint: string): string => {
 
 export const shouldUseMockApi = (): boolean => API_CONFIG.USE_MOCK
 export const shouldUseUserMockApi = (): boolean => API_CONFIG.userUseMock ?? API_CONFIG.USE_MOCK
+export const shouldUseRoomMockApi = (): boolean => API_CONFIG.roomUseMock ?? API_CONFIG.USE_MOCK
