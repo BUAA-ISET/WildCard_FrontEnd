@@ -12,12 +12,13 @@ const resolveBaseUrl = (): string => {
 }
 
 export const API_CONFIG = {
-    BASE_URL: 'http://81.70.231.146:3000',
+    BASE_URL: resolveBaseUrl(),
     // 规则保存、房间创建和开局需要后端规则引擎解析，因此默认走真实后端。
     USE_MOCK: false,
 
     userUseMock: false,
     roomUseMock: false,
+    gameUseMock: false,
 
     endpoints: {
         user: {

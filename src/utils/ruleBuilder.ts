@@ -564,7 +564,7 @@ const getOutgoingEdges = (graph: FlowGraphDraft, nodeId: string) => {
 }
 //寻找某一节点的出边
 
-const semanticTargetHandles = ['index', 'component', 'rvalue', 'lval', 'rval', 'return']
+const semanticTargetHandles = ['index', 'component', 'rvalue', 'lval', 'rval', 'condition', 'return']
 
 const isSemanticInputEdge = (edge: RuleEdgeDraft) => {
   return semanticTargetHandles.includes(edge.targetHandle || '')
@@ -641,6 +641,7 @@ const normalizeComponentReferencesForExport = (
     12: ['lval', 'rval'],
     13: ['component'],
     14: ['lval', 'rval'],
+    16: ['condition'],
     26: ['return'],
   }
 

@@ -123,8 +123,9 @@ const handleConnect = (connection: Connection) => {
   const isArithmeticOperand = isOperationOperand && targetNode?.data.componentType === 10
   const isBinaryLogicOperand = isOperationOperand && targetNode?.data.componentType === 12
   const isLogicComponentInput = connection.targetHandle === 'component' && [11, 13].includes(targetNode?.data.componentType || 0)
+  const isBranchConditionInput = connection.targetHandle === 'condition' && targetNode?.data.componentType === 16
   const isMethodReturnValue = connection.targetHandle === 'return' && targetNode?.data.componentType === 26
-  const isSemanticInput = isIndexEmbedding || isAssignmentComponent || isAssignmentRvalue || isOperationOperand || isLogicComponentInput || isMethodReturnValue
+  const isSemanticInput = isIndexEmbedding || isAssignmentComponent || isAssignmentRvalue || isOperationOperand || isLogicComponentInput || isBranchConditionInput || isMethodReturnValue
 
   if (isIndexEmbedding) {
     if (!sourceNode || !targetNode || targetNode.data.componentType !== 5) {
@@ -196,7 +197,7 @@ const handleConnect = (connection: Connection) => {
     return
   }
 
-  if (isLogicComponentInput) {
+  if (isLogicComponentInput || isBranchConditionInput) {
     if (!sourceNode || !targetNode) {
       return
     }
@@ -262,6 +263,10 @@ const semanticEdgeLabel = (targetHandle?: string | null, targetType?: number) =>
 
   if (targetHandle === 'component' && [11, 13].includes(targetType || 0)) {
     return '逻辑条件'
+  }
+
+  if (targetHandle === 'condition' && targetType === 16) {
+    return '分支条件'
   }
 
   if (targetHandle === 'rvalue') {

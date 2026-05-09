@@ -7,7 +7,7 @@
 
     <div class="battle-top">
       <div class="battle-tool">
-        <label>玩家人数</label>
+        <label>Players</label>
         <input :value="snapshot?.players.length || 0" type="number" min="2" max="8" disabled>
       </div>
       <div class="opponent-list">
@@ -17,7 +17,7 @@
           class="player-card"
           :class="{ active: currentTurnPlayerId === player.id }"
         >
-          <div class="player-avatar">{{ player.name }}</div>
+          <div class="player-avatar">{{ player.name.slice(0, 1) }}</div>
           <div class="mini-back" :style="backCardStyle">
             <div v-if="!cardStyle.backImage" class="mini-back-inner"></div>
           </div>
@@ -89,11 +89,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { gameApi, type GameSnapshot } from '../api/game'
 import { roomApi } from '../api/room'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { roomApi, DEFAULT_AVATAR, getRoomEntryPath, type Room } from '../api/room'
-import { validateCardPlay, type PlayCard, type RoomRuleDefinition, type RoundPlayRecord } from '../utils/cardPlayRules'
 
 type CardStyle = {
   fontFamily: string
@@ -117,20 +112,20 @@ const selectedCardIds = ref<string[]>([])
 const actionLoading = ref(false)
 const isLeavingBattle = ref(false)
 const showSettlementNotice = ref(false)
+const SETTLEMENT_REDIRECT_DELAY_MS = 1800
+
 let settlementTimer: number | null = null
 let pollingTimer: number | null = null
-const SETTLEMENT_REDIRECT_DELAY_MS = 1800
 
 const defaultCardStyle: CardStyle = {
   fontFamily: 'Arial, sans-serif',
   theme: 'classic',
   frontImage: '',
-  backImage: ''
+  backImage: '',
 }
 
-const readCardStyle = () => {
+function readCardStyle(): CardStyle {
   const savedStyle = localStorage.getItem(storageKey)
-
   if (!savedStyle) {
     return defaultCardStyle
   }
@@ -138,7 +133,7 @@ const readCardStyle = () => {
   try {
     return {
       ...defaultCardStyle,
-      ...JSON.parse(savedStyle)
+      ...JSON.parse(savedStyle),
     }
   } catch {
     return defaultCardStyle
@@ -146,45 +141,10 @@ const readCardStyle = () => {
 }
 
 const cardStyle = readCardStyle()
-const playRule = ref<RoomRuleDefinition | null>(null)
-const currentRoom = ref<Room | null>(null)
-const previousRoundPlay = ref<RoundPlayRecord | null>(null)
-const playerCount = ref(3)
-const currentPlayerId = ref(roomApi.getCurrentPlayerId())
-const lastAction = ref('等待出牌')
-const selectedCardIds = ref<string[]>([])
-const tableCards = ref<CardItem[]>([
-  { id: 'table-1', rank: '8', suit: '♠' },
-  { id: 'table-2', rank: '8', suit: '♥' },
-  { id: 'table-3', rank: '8', suit: '♣' },
-  { id: 'table-4', rank: '3', suit: '♥' }
-])
-const handCards = ref<CardItem[]>([
-  { id: 'hand-1', rank: '2', suit: '♣' },
-  { id: 'hand-2', rank: 'K', suit: '♥' },
-  { id: 'hand-3', rank: 'Q', suit: '♦' },
-  { id: 'hand-4', rank: '10', suit: '♥' },
-  { id: 'hand-5', rank: '2', suit: '♥' },
-  { id: 'hand-6', rank: 'A', suit: '♦' },
-  { id: 'hand-7', rank: 'K', suit: '♠' },
-  { id: 'hand-8', rank: 'Q', suit: '♥' },
-  { id: 'hand-9', rank: 'J', suit: '♠' },
-  { id: 'hand-10', rank: '10', suit: '♥' },
-  { id: 'hand-11', rank: '9', suit: '♠' },
-  { id: 'hand-12', rank: '6', suit: '♣' },
-  { id: 'hand-13', rank: '5', suit: '♥' },
-  { id: 'hand-14', rank: '4', suit: '♥' }
-])
-
-const findPointPropertyConfig = () => {
-  const cardClass = playRule.value?.classes?.card as RuleCardClass | undefined
-  const properties = {
-    ...(cardClass?.default_properties || {}),
-    ...(cardClass?.user_properties || {}),
-  }
 
 const currentTurnPlayerId = computed(() => snapshot.value?.currentPlayerId || '')
 const currentActionId = computed(() => snapshot.value?.pendingAction?.actionId || '')
+
 const opponents = computed(() => (
   snapshot.value?.players
     .filter((player) => player.id !== currentPlayerId)
@@ -211,74 +171,53 @@ const handCards = computed<BattleCard[]>(() => (
   })) || []
 ))
 
-const canPlay = computed(() => currentTurnPlayerId.value === currentPlayerId && handCards.value.length > 0)
+const canPlay = computed(() => (
+  currentTurnPlayerId.value === currentPlayerId
+  && Boolean(snapshot.value?.pendingAction)
+  && handCards.value.length > 0
+))
+
 const canSkip = computed(() => (
   currentTurnPlayerId.value === currentPlayerId
   && Boolean(snapshot.value?.pendingAction?.canSkip)
 ))
+
 const settlementTitle = computed(() => (
-  snapshot.value?.winnerIds.includes(currentPlayerId) ? '对局结束，你获胜了' : '对局结束'
+  snapshot.value?.winnerIds.includes(currentPlayerId) ? 'Match finished, you win' : 'Match finished'
 ))
-const settlementMessage = computed(() => '结算完成，正在返回准备房间...')
+
+const settlementMessage = computed(() => 'Settlement complete. Returning to the ready room...')
 
 const turnText = computed(() => {
   if (!snapshot.value) {
-    return '等待对局初始化'
+    return 'Waiting for the match to initialize'
   }
   if (snapshot.value.status === 'finished') {
-    if (snapshot.value.winnerIds.includes(currentPlayerId)) {
-      return '对局结束，你获胜了'
-    }
-    return '对局结束'
+    return snapshot.value.winnerIds.includes(currentPlayerId)
+      ? 'Match finished, you win'
+      : 'Match finished'
   }
   if (currentTurnPlayerId.value === currentPlayerId) {
-    return snapshot.value.lastAction?.message || '当前轮到你出牌'
-}
-
-const opponents = computed(() => {
-  if (currentRoom.value) {
-    return currentRoom.value.players
-      .filter((player) => player.id !== currentPlayerId.value)
-      .map((player) => ({
-        id: player.id,
-        name: player.username || 'Player',
-        avatar: player.avatar || DEFAULT_AVATAR,
-        cardCount: 13
-      }))
+    return snapshot.value.lastAction?.message || 'Your turn to play'
   }
 
-  const count = Math.max(2, Math.min(8, Number(playerCount.value) || 3))
-
-  return Array.from({ length: count - 1 }, (_, index) => ({
-    id: `player-${index + 1}`,
-    name: String.fromCharCode(65 + index),
-    avatar: DEFAULT_AVATAR,
-    cardCount: 17 - index * 2
-  }))
-})
-
-const turnText = computed(() => {
-  if (currentPlayerId.value === roomApi.getCurrentPlayerId()) {
-    return `当前轮到你，${lastAction.value}`
-  }
-
-  const player = snapshot.value.players.find(item => item.id === currentTurnPlayerId.value)
-  return `当前轮到玩家 ${player?.username || 'Unknown'}`
+  const player = snapshot.value.players.find((item) => item.id === currentTurnPlayerId.value)
+  return `Current turn: ${player?.username || 'Unknown'}`
 })
 
 const frontCardStyle = computed(() => ({
   fontFamily: cardStyle.fontFamily,
   backgroundImage: cardStyle.frontImage ? `url(${cardStyle.frontImage})` : 'none',
-  backgroundSize: cardStyle.frontImage ? 'cover' : 'initial'
+  backgroundSize: cardStyle.frontImage ? 'cover' : 'initial',
 }))
 
 const backCardStyle = computed(() => ({
   backgroundImage: cardStyle.backImage ? `url(${cardStyle.backImage})` : 'none',
-  backgroundSize: cardStyle.backImage ? 'cover' : 'initial'
+  backgroundSize: cardStyle.backImage ? 'cover' : 'initial',
 }))
 
-const themeClass = (suit: string) => {
-  const colorClass = suit === '♥' || suit === '♦' ? 'red-card' : 'black-card'
+function themeClass(suit: string) {
+  const colorClass = suit === 'H' || suit === 'D' ? 'red-card' : 'black-card'
   return `${colorClass} theme-${cardStyle.theme}`
 }
 
@@ -288,11 +227,18 @@ function toggleCard(cardId: string) {
   }
 
   if (selectedCardIds.value.includes(cardId)) {
-    selectedCardIds.value = selectedCardIds.value.filter(id => id !== cardId)
+    selectedCardIds.value = selectedCardIds.value.filter((id) => id !== cardId)
     return
   }
 
   selectedCardIds.value.push(cardId)
+}
+
+function stopPolling() {
+  if (pollingTimer !== null) {
+    window.clearInterval(pollingTimer)
+    pollingTimer = null
+  }
 }
 
 async function refreshSnapshot() {
@@ -307,16 +253,19 @@ async function refreshSnapshot() {
   }
 
   if (!result.success || !result.data) {
-    ElMessage.error(result.message || '无法加载当前对局')
     stopPolling()
+    ElMessage.error(result.message || 'Failed to load the current match')
     await router.replace(`/game/${roomCode}`)
     return
   }
 
   snapshot.value = result.data
-  selectedCardIds.value = selectedCardIds.value.filter(cardId => (
-    result.data?.handCards.some(card => card.id === cardId)
+  selectedCardIds.value = selectedCardIds.value.filter((cardId) => (
+    result.data?.handCards.some((card) => card.id === cardId)
   ))
+  if (result.data.status === 'finished') {
+    stopPolling()
+  }
 }
 
 async function returnToReadyRoom() {
@@ -340,12 +289,6 @@ function scheduleReadyRoomRedirect() {
     settlementTimer = null
     void returnToReadyRoom()
   }, SETTLEMENT_REDIRECT_DELAY_MS)
-  tableCards.value = handCards.value.filter(card => selectedIdSet.has(card.id))
-  previousRoundPlay.value = validationResult.roundPlay || null
-  handCards.value = handCards.value.filter(card => !selectedCardIds.value.includes(card.id))
-  selectedCardIds.value = []
-  lastAction.value = '已出牌'
-  currentPlayerId.value = opponents.value[0]?.id || roomApi.getCurrentPlayerId()
 }
 
 async function playSelectedCards() {
@@ -353,7 +296,7 @@ async function playSelectedCards() {
     return
   }
   if (selectedCardIds.value.length === 0) {
-    ElMessage.error('请先选择要出的牌')
+    ElMessage.error('Select cards before playing')
     return
   }
 
@@ -362,7 +305,7 @@ async function playSelectedCards() {
   actionLoading.value = false
 
   if (!result.success || !result.data) {
-    ElMessage.error(result.message || '出牌失败')
+    ElMessage.error(result.message || 'Failed to play cards')
     return
   }
 
@@ -378,47 +321,14 @@ async function skipTurn() {
   actionLoading.value = true
   const result = await gameApi.skip(snapshot.value.sessionId, currentActionId.value)
   actionLoading.value = false
-  lastAction.value = '已跳过'
-  currentPlayerId.value = opponents.value[0]?.id || roomApi.getCurrentPlayerId()
-}
-
-async function loadPlayableRule() {
-  const roomCode = String(route.params.roomCode || '')
-  const roomResult = roomCode
-    ? await roomApi.getRoomByCode(roomCode)
-    : await roomApi.getCurrentRoom()
-
-  if (!roomResult.success || !roomResult.data) {
-    ElMessage.error(roomResult.message || 'Room does not exist.')
-    await router.replace('/')
-    return
-  }
-
-  currentRoom.value = roomResult.data
-  playerCount.value = roomResult.data.playerCount
-
-  const expectedPath = getRoomEntryPath(roomResult.data)
-  if (route.path !== expectedPath) {
-    await router.replace(expectedPath)
-    return
-  }
-
-  const ruleResult = await roomApi.getRoomRule(roomResult.data?.id || roomResult.data?.code)
 
   if (!result.success || !result.data) {
-    ElMessage.error(result.message || '跳过失败')
+    ElMessage.error(result.message || 'Failed to skip')
     return
   }
 
   snapshot.value = result.data
   selectedCardIds.value = []
-}
-
-function stopPolling() {
-  if (pollingTimer !== null) {
-    window.clearInterval(pollingTimer)
-    pollingTimer = null
-  }
 }
 
 onMounted(async () => {
@@ -625,10 +535,6 @@ onBeforeUnmount(() => {
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
 
-.hand-card:disabled {
-  cursor: not-allowed;
-}
-
 .red-card {
   color: #df2b2b;
 }
@@ -647,7 +553,7 @@ onBeforeUnmount(() => {
 }
 
 .black-card.theme-soft {
-  color: #1a155a
+  color: #1a155a;
 }
 
 .theme-green {
@@ -660,7 +566,7 @@ onBeforeUnmount(() => {
 }
 
 .black-card.theme-green {
-  color: #114b30
+  color: #114b30;
 }
 
 .card-corner {

@@ -74,6 +74,11 @@
       <strong>{{ returnValue && returnValue !== 'void' ? `#${returnDisplay}` : '连接值组件' }}</strong>
       <Handle id="return" type="target" :position="Position.Bottom" class="return-value-handle" />
     </div>
+    <div v-if="data.componentType === 16" class="logic-input-slot" :class="{ filled: branchConditionValue }">
+      <span class="slot-label">分支条件</span>
+      <strong>{{ branchConditionValue ? `#${branchConditionDisplay}` : '连接逻辑组件' }}</strong>
+      <Handle id="condition" type="target" :position="Position.Bottom" class="logic-input-handle" />
+    </div>
     <template v-if="data.componentType === 16">
       <Handle id="true" type="source" :position="Position.Right" :style="{ top: '42%' }" />
       <Handle id="false" type="source" :position="Position.Right" :style="{ top: '72%' }" />
@@ -160,6 +165,11 @@ const logicComponentValue = computed(() => {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 })
 const logicComponentDisplay = computed(() => displayReference(logicComponentValue.value))
+const branchConditionValue = computed(() => {
+  const value = props.data.content?.condition
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
+})
+const branchConditionDisplay = computed(() => displayReference(branchConditionValue.value))
 const binaryLogicLvalValue = computed(() => {
   const value = props.data.content?.lval
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''

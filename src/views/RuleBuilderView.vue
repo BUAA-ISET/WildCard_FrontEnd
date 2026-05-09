@@ -383,6 +383,11 @@ const syncSemanticInputs = (nodes: RuleNodeDraft[], edges: RuleEdgeDraft[]) => {
       nextContent.rval = rvalEdge?.source || ''
     }
 
+    if (node.data.componentType === 16) {
+      const conditionEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'condition')
+      nextContent.condition = conditionEdge?.source || ''
+    }
+
     if (node.data.componentType === 26) {
       const returnEdge = edges.find(edge => edge.target === node.id && edge.targetHandle === 'return')
       nextContent.return = activeMethod.value?.returns ? returnEdge?.source || '' : 'void'
@@ -394,6 +399,7 @@ const syncSemanticInputs = (nodes: RuleNodeDraft[], edges: RuleEdgeDraft[]) => {
       getContentString(node.data.content, 'rvalue') === getContentString(nextContent, 'rvalue') &&
       getContentString(node.data.content, 'lval') === getContentString(nextContent, 'lval') &&
       getContentString(node.data.content, 'rval') === getContentString(nextContent, 'rval') &&
+      getContentString(node.data.content, 'condition') === getContentString(nextContent, 'condition') &&
       getContentString(node.data.content, 'return') === getContentString(nextContent, 'return')
     ) {
       return node
