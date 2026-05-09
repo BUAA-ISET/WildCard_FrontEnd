@@ -1,8 +1,10 @@
 export const API_CONFIG = {
     BASE_URL: 'http://localhost:3000',
-    // 默认保留房间/规则 mock，仅优先打通用户系统
+    // 默认保留规则 mock，优先联通用户/房间/对局真实后端
     USE_MOCK: true,
     userUseMock: false,
+    roomUseMock: false,
+    gameUseMock: false,
 
     endpoints: {
         user: {
@@ -23,6 +25,9 @@ export const API_CONFIG = {
             getCurrent: '/api/room/current',
             getRule: '/api/room/rule/get',
             leave: '/api/room/leave',
+        },
+        game: {
+            getCurrent: '/api/games/current',
         }
     }
 }
@@ -33,3 +38,5 @@ export const getApiUrl = (endpoint: string): string => {
 
 export const shouldUseMockApi = (): boolean => API_CONFIG.USE_MOCK
 export const shouldUseUserMockApi = (): boolean => API_CONFIG.userUseMock ?? API_CONFIG.USE_MOCK
+export const shouldUseRoomMockApi = (): boolean => API_CONFIG.roomUseMock ?? API_CONFIG.USE_MOCK
+export const shouldUseGameMockApi = (): boolean => API_CONFIG.gameUseMock ?? API_CONFIG.USE_MOCK

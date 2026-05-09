@@ -8,6 +8,7 @@ interface RequestOptions {
     useMock?: boolean
     mockDelay?: number
     mockFn?: () => any
+    headers?: Record<string, string>
 }
 
 const DEFAULT_MOCK_DELAY = 300
@@ -26,7 +27,8 @@ export async function apiRequest<T = any>(
         body,
         useMock = shouldUseMockApi(),
         mockDelay = DEFAULT_MOCK_DELAY,
-        mockFn
+        mockFn,
+        headers = {}
     } = options
 
     if (useMock) {
@@ -45,6 +47,7 @@ export async function apiRequest<T = any>(
         credentials: 'include',
         headers: {
             'Content-Type': 'application/json',
+            ...headers,
         },
         body: body ? JSON.stringify(body) : undefined,
     })

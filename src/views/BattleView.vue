@@ -1,24 +1,26 @@
 <template>
   <div class="battle-page">
+    <div v-if="showSettlementNotice" class="settlement-banner">
+      <strong>{{ settlementTitle }}</strong>
+      <span>{{ settlementMessage }}</span>
+    </div>
+
     <div class="battle-top">
       <div class="battle-tool">
         <label>玩家人数</label>
-        <input v-model.number="playerCount" type="number" min="2" max="8">
+        <input :value="snapshot?.players.length || 0" type="number" min="2" max="8" disabled>
       </div>
       <div class="opponent-list">
         <div
           v-for="player in opponents"
           :key="player.id"
           class="player-card"
-          :class="{ active: currentPlayerId === player.id }"
+          :class="{ active: currentTurnPlayerId === player.id }"
         >
           <div class="player-avatar">{{ player.name }}</div>
           <div class="mini-back" :style="backCardStyle">
             <div v-if="!cardStyle.backImage" class="mini-back-inner"></div>
           </div>
-          <!-- <div class="back-card" :style="backCardStyle">
-            <div v-if="!cardStyle.backImage" class="op-back-pattern"></div>
-          </div> -->
           <div class="card-count">{{ player.cardCount }}</div>
         </div>
       </div>
@@ -50,11 +52,11 @@
 
     <div class="user-area">
       <div class="action-panel">
-        <button @click="playSelectedCards">PLAY</button>
-        <button @click="skipTurn">SKIP</button>
+        <button :disabled="!canPlay || actionLoading" @click="playSelectedCards">PLAY</button>
+        <button :disabled="!canSkip || actionLoading" @click="skipTurn">SKIP</button>
       </div>
 
-      <div class="user-info" :class="{ active: currentPlayerId === 'me' }">
+      <div class="user-info" :class="{ active: currentTurnPlayerId === currentPlayerId }">
         <div class="user-avatar">U</div>
         <div class="turn-text">{{ turnText }}</div>
       </div>
@@ -82,10 +84,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { gameApi, type GameSnapshot } from '../api/game'
 import { roomApi } from '../api/room'
-import { validateCardPlay, type PlayCard, type RoomRuleDefinition, type RoundPlayRecord } from '../utils/cardPlayRules'
 
 type CardStyle = {
   fontFamily: string
@@ -94,24 +97,24 @@ type CardStyle = {
   backImage: string
 }
 
-type CardItem = PlayCard & {
+type BattleCard = {
+  id: string
+  rank: string
   suit: string
 }
 
-type RulePropertyConfig = {
-  config?: Array<{
-    display: string
-    value: number
-  }>
-}
-
-type RuleCardClass = {
-  default_properties?: Record<string, RulePropertyConfig>
-  user_properties?: Record<string, RulePropertyConfig>
-}
-
 const route = useRoute()
+const router = useRouter()
 const storageKey = 'wildcard-card-style'
+const currentPlayerId = roomApi.getCurrentPlayerId()
+const snapshot = ref<GameSnapshot | null>(null)
+const selectedCardIds = ref<string[]>([])
+const actionLoading = ref(false)
+const isLeavingBattle = ref(false)
+const showSettlementNotice = ref(false)
+let settlementTimer: number | null = null
+let pollingTimer: number | null = null
+const SETTLEMENT_REDIRECT_DELAY_MS = 1800
 
 const defaultCardStyle: CardStyle = {
   fontFamily: 'Arial, sans-serif',
@@ -138,94 +141,61 @@ const readCardStyle = () => {
 }
 
 const cardStyle = readCardStyle()
-const playRule = ref<RoomRuleDefinition | null>(null)
-const previousRoundPlay = ref<RoundPlayRecord | null>(null)
-const playerCount = ref(3)
-const currentPlayerId = ref('me')
-const lastAction = ref('等待出牌')
-const selectedCardIds = ref<string[]>([])
-const tableCards = ref<CardItem[]>([
-  { id: 'table-1', rank: '8', suit: '♠' },
-  { id: 'table-2', rank: '8', suit: '♥' },
-  { id: 'table-3', rank: '8', suit: '♣' },
-  { id: 'table-4', rank: '3', suit: '♥' }
-])
-const handCards = ref<CardItem[]>([
-  { id: 'hand-1', rank: '2', suit: '♣' },
-  { id: 'hand-2', rank: 'K', suit: '♥' },
-  { id: 'hand-3', rank: 'Q', suit: '♦' },
-  { id: 'hand-4', rank: '10', suit: '♥' },
-  { id: 'hand-5', rank: '2', suit: '♥' },
-  { id: 'hand-6', rank: 'A', suit: '♦' },
-  { id: 'hand-7', rank: 'K', suit: '♠' },
-  { id: 'hand-8', rank: 'Q', suit: '♥' },
-  { id: 'hand-9', rank: 'J', suit: '♠' },
-  { id: 'hand-10', rank: '10', suit: '♥' },
-  { id: 'hand-11', rank: '9', suit: '♠' },
-  { id: 'hand-12', rank: '6', suit: '♣' },
-  { id: 'hand-13', rank: '5', suit: '♥' },
-  { id: 'hand-14', rank: '4', suit: '♥' }
-])
 
-const findPointPropertyConfig = () => {
-  const cardClass = playRule.value?.classes?.card as RuleCardClass | undefined
-  const properties = {
-    ...(cardClass?.default_properties || {}),
-    ...(cardClass?.user_properties || {}),
-  }
+const currentTurnPlayerId = computed(() => snapshot.value?.currentPlayerId || '')
+const currentActionId = computed(() => snapshot.value?.pendingAction?.actionId || '')
+const opponents = computed(() => (
+  snapshot.value?.players
+    .filter((player) => player.id !== currentPlayerId)
+    .map((player) => ({
+      id: player.id,
+      name: player.username || 'Player',
+      cardCount: player.cardCount,
+    })) || []
+))
 
-  return properties.point || properties.rank || properties['点数']
-}
+const tableCards = computed<BattleCard[]>(() => (
+  snapshot.value?.table.playedCards.map((card) => ({
+    id: card.id,
+    rank: card.display.rank,
+    suit: card.display.suit,
+  })) || []
+))
 
-const findPointByRank = (rank: string) => {
-  const config = findPointPropertyConfig()?.config || []
-  const matchedOption = config.find((option) => option.display === rank || String(option.value) === rank)
+const handCards = computed<BattleCard[]>(() => (
+  snapshot.value?.handCards.map((card) => ({
+    id: card.id,
+    rank: card.display.rank,
+    suit: card.display.suit,
+  })) || []
+))
 
-  if (typeof matchedOption?.value === 'number') {
-    return matchedOption.value
-  }
-
-  const numericRank = Number(rank)
-  return Number.isFinite(numericRank) ? numericRank : undefined
-}
-
-const readExistingPoint = (card: CardItem) => {
-  const point = card.point ?? card.properties?.point ?? card.properties?.rank ?? card.properties?.['点数']
-  return typeof point === 'number' ? point : undefined
-}
-
-const toPlayableCard = (card: CardItem): PlayCard => {
-  const point = readExistingPoint(card) ?? findPointByRank(card.rank) ?? 0
-
-  return {
-    ...card,
-    point,
-    properties: {
-      ...card.properties,
-      rank: point ?? card.rank,
-      point: point ?? card.properties?.point ?? card.rank,
-      suit: card.properties?.suit ?? card.suit,
-    },
-  }
-}
-
-const opponents = computed(() => {
-  const count = Math.max(2, Math.min(8, Number(playerCount.value) || 3))
-
-  return Array.from({ length: count - 1 }, (_, index) => ({
-    id: `player-${index + 1}`,
-    name: String.fromCharCode(65 + index),
-    cardCount: 17 - index * 2
-  }))
-})
+const canPlay = computed(() => currentTurnPlayerId.value === currentPlayerId && handCards.value.length > 0)
+const canSkip = computed(() => (
+  currentTurnPlayerId.value === currentPlayerId
+  && Boolean(snapshot.value?.pendingAction?.canSkip)
+))
+const settlementTitle = computed(() => (
+  snapshot.value?.winnerIds.includes(currentPlayerId) ? '对局结束，你获胜了' : '对局结束'
+))
+const settlementMessage = computed(() => '结算完成，正在返回准备房间...')
 
 const turnText = computed(() => {
-  if (currentPlayerId.value === 'me') {
-    return `当前轮到你，${lastAction.value}`
+  if (!snapshot.value) {
+    return '等待对局初始化'
+  }
+  if (snapshot.value.status === 'finished') {
+    if (snapshot.value.winnerIds.includes(currentPlayerId)) {
+      return '对局结束，你获胜了'
+    }
+    return '对局结束'
+  }
+  if (currentTurnPlayerId.value === currentPlayerId) {
+    return snapshot.value.lastAction?.message || '当前轮到你出牌'
   }
 
-  const player = opponents.value.find(item => item.id === currentPlayerId.value)
-  return `当前轮到玩家 ${player?.name || 'A'}`
+  const player = snapshot.value.players.find(item => item.id === currentTurnPlayerId.value)
+  return `当前轮到玩家 ${player?.username || 'Unknown'}`
 })
 
 const frontCardStyle = computed(() => ({
@@ -244,7 +214,11 @@ const themeClass = (suit: string) => {
   return `${colorClass} theme-${cardStyle.theme}`
 }
 
-const toggleCard = (cardId: string) => {
+function toggleCard(cardId: string) {
+  if (!canPlay.value || actionLoading.value) {
+    return
+  }
+
   if (selectedCardIds.value.includes(cardId)) {
     selectedCardIds.value = selectedCardIds.value.filter(id => id !== cardId)
     return
@@ -253,58 +227,122 @@ const toggleCard = (cardId: string) => {
   selectedCardIds.value.push(cardId)
 }
 
-const playSelectedCards = () => {
-  if (selectedCardIds.value.length === 0) {
-    lastAction.value = '请先选择手牌'
-    return
-  }
-
-  const playableHandCards = handCards.value.map(toPlayableCard)
-  const selectedIdSet = new Set(selectedCardIds.value)
-  const selectedCards = playableHandCards.filter(card => selectedIdSet.has(card.id))
-  const validationResult = validateCardPlay({
-    selectedCards,
-    handCards: playableHandCards,
-    rule: playRule.value,
-    previousRoundPlay: previousRoundPlay.value,
-  })
-
-  if (!validationResult.legal) {
-    lastAction.value = validationResult.message
-    return
-  }
-
-  tableCards.value = handCards.value.filter(card => selectedIdSet.has(card.id))
-  previousRoundPlay.value = validationResult.roundPlay || null
-  handCards.value = handCards.value.filter(card => !selectedCardIds.value.includes(card.id))
-  selectedCardIds.value = []
-  lastAction.value = '已出牌'
-  currentPlayerId.value = opponents.value[0]?.id || 'me'
-}
-
-const skipTurn = () => {
-  selectedCardIds.value = []
-  lastAction.value = '已跳过'
-  currentPlayerId.value = opponents.value[0]?.id || 'me'
-}
-
-async function loadPlayableRule() {
+async function refreshSnapshot() {
   const roomCode = String(route.params.roomCode || '')
-  const roomResult = roomCode
-    ? await roomApi.getRoomByCode(roomCode)
-    : await roomApi.getCurrentRoom()
-  const ruleResult = await roomApi.getRoomRule(roomResult.data?.id || roomResult.data?.code)
-
-  if (ruleResult.success && ruleResult.data?.rule) {
-    playRule.value = ruleResult.data.rule
+  if (!roomCode || isLeavingBattle.value) {
     return
   }
 
-  lastAction.value = ruleResult.message || '规则加载失败，暂时无法出牌'
+  const result = await gameApi.getCurrent(roomCode)
+  if (isLeavingBattle.value) {
+    return
+  }
+
+  if (!result.success || !result.data) {
+    ElMessage.error(result.message || '无法加载当前对局')
+    stopPolling()
+    await router.replace(`/game/${roomCode}`)
+    return
+  }
+
+  snapshot.value = result.data
+  selectedCardIds.value = selectedCardIds.value.filter(cardId => (
+    result.data?.handCards.some(card => card.id === cardId)
+  ))
 }
 
-onMounted(() => {
-  void loadPlayableRule()
+async function returnToReadyRoom() {
+  const roomCode = String(route.params.roomCode || '')
+  if (!roomCode || isLeavingBattle.value) {
+    return
+  }
+
+  isLeavingBattle.value = true
+  stopPolling()
+  await router.replace(`/game/${roomCode}`)
+}
+
+function scheduleReadyRoomRedirect() {
+  if (settlementTimer !== null || isLeavingBattle.value) {
+    return
+  }
+
+  showSettlementNotice.value = true
+  settlementTimer = window.setTimeout(() => {
+    settlementTimer = null
+    void returnToReadyRoom()
+  }, SETTLEMENT_REDIRECT_DELAY_MS)
+}
+
+async function playSelectedCards() {
+  if (!snapshot.value) {
+    return
+  }
+  if (selectedCardIds.value.length === 0) {
+    ElMessage.error('请先选择要出的牌')
+    return
+  }
+
+  actionLoading.value = true
+  const result = await gameApi.playCards(snapshot.value.sessionId, currentActionId.value, selectedCardIds.value)
+  actionLoading.value = false
+
+  if (!result.success || !result.data) {
+    ElMessage.error(result.message || '出牌失败')
+    return
+  }
+
+  snapshot.value = result.data
+  selectedCardIds.value = []
+}
+
+async function skipTurn() {
+  if (!snapshot.value) {
+    return
+  }
+
+  actionLoading.value = true
+  const result = await gameApi.skip(snapshot.value.sessionId, currentActionId.value)
+  actionLoading.value = false
+
+  if (!result.success || !result.data) {
+    ElMessage.error(result.message || '跳过失败')
+    return
+  }
+
+  snapshot.value = result.data
+  selectedCardIds.value = []
+}
+
+function stopPolling() {
+  if (pollingTimer !== null) {
+    window.clearInterval(pollingTimer)
+    pollingTimer = null
+  }
+}
+
+onMounted(async () => {
+  await refreshSnapshot()
+  pollingTimer = window.setInterval(() => {
+    void refreshSnapshot()
+  }, 1500)
+})
+
+watch(
+  () => snapshot.value?.status,
+  (status) => {
+    if (status === 'finished') {
+      scheduleReadyRoomRedirect()
+    }
+  },
+)
+
+onBeforeUnmount(() => {
+  if (settlementTimer !== null) {
+    window.clearTimeout(settlementTimer)
+    settlementTimer = null
+  }
+  stopPolling()
 })
 </script>
 
@@ -315,6 +353,26 @@ onMounted(() => {
   gap: 24px;
   min-height: 100%;
   padding: 28px;
+}
+
+.settlement-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid #d7c483;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #fff4cc 0%, #ffe7a3 100%);
+  color: #5b4300;
+}
+
+.settlement-banner strong {
+  font-size: 1rem;
+}
+
+.settlement-banner span {
+  font-size: 0.92rem;
 }
 
 .battle-top,
@@ -405,28 +463,6 @@ onMounted(() => {
   background: repeating-linear-gradient(45deg, #2f5f9c 0 5px, #214571 5px 10px);
 }
 
-.back-card {
-  width: 52px;
-  height: 78px;
-  background-color: #264b7c;
-}
-
-.op-back-pattern {
-  position: absolute;
-  inset: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 4px double #e7efff;
-  border-radius: 8px;
-  background:
-    radial-gradient(circle at 50% 50%, #ffffff 0 5px, transparent 6px),
-    repeating-linear-gradient(45deg, #2f5f9c 0 8px, #214571 8px 16px);
-  color: #fff;
-  font-size: 24px;
-  font-weight: 700;
-}
-
 .card-count {
   color: #000;
   font-size: 34px;
@@ -487,6 +523,10 @@ onMounted(() => {
   transform: translateY(-18px);
   border-color: #8d79d6;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+}
+
+.hand-card:disabled {
+  cursor: not-allowed;
 }
 
 .red-card {
@@ -584,8 +624,13 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.action-panel button:hover {
+.action-panel button:hover:not(:disabled) {
   background: #ece6fa;
+}
+
+.action-panel button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .user-info {
@@ -613,6 +658,11 @@ onMounted(() => {
 @media (max-width: 900px) {
   .battle-page {
     grid-template-rows: auto 1fr auto;
+  }
+
+  .settlement-banner {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .battle-top,

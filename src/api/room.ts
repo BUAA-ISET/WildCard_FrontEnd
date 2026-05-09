@@ -1,5 +1,5 @@
-import { apiPost, apiGet } from './request'
-import { API_CONFIG } from './config'
+import { apiGet, apiPost } from './request'
+import { API_CONFIG, shouldUseRoomMockApi } from './config'
 import defaultAvatarUrl from '../assets/default-avatar.svg'
 import { scopedStorageKey, USER_STORAGE_KEY } from '../utils/storageNamespace'
 import type { RoomRuleResponse } from '../utils/cardPlayRules'
@@ -41,6 +41,26 @@ export interface GameRuleOption {
     name: string
     playerCount: number
     description?: string
+}
+
+type RoomResult<T> = {
+    success: boolean
+    data?: T
+    message?: string
+}
+
+type BackendPlayer = Partial<Player> & {
+    is_ready?: boolean
+    joined_at?: number
+}
+
+type BackendRoom = Partial<Room> & {
+    host_id?: string
+    player_count?: number
+    round_time?: number
+    rule_id?: string
+    rule_name?: string
+    players?: BackendPlayer[]
 }
 
 const mockRuleOptions: GameRuleOption[] = [
@@ -168,9 +188,9 @@ function writeRooms(rooms: Record<string, Room>) {
     window.localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify(rooms))
 }
 
-function getCurrentPlayerId(): string {
+function getGuestPlayerId(): string {
     if (!hasBrowserStorage()) {
-        return 'currentUser'
+        return 'guest-player'
     }
 
     const existingId = window.sessionStorage.getItem(PLAYER_STORAGE_KEY)
@@ -183,12 +203,20 @@ function getCurrentPlayerId(): string {
     return newId
 }
 
+function getCurrentPlayerId(): string {
+    const currentUser = getCachedCurrentUser()
+    return currentUser?.id || getGuestPlayerId()
+}
+
 function getCurrentRoomCode(): string | null {
     if (!hasBrowserStorage()) {
         return null
     }
 
-    return window.sessionStorage.getItem(CURRENT_ROOM_STORAGE_KEY)
+    return (
+        window.sessionStorage.getItem(CURRENT_ROOM_STORAGE_KEY)
+        || window.sessionStorage.getItem(LEGACY_CURRENT_ROOM_STORAGE_KEY)
+    )
 }
 
 function setCurrentRoomCode(code: string) {
@@ -211,6 +239,10 @@ function clearCurrentRoomCode() {
 
 function generateRoomCode(): string {
     return Math.random().toString(36).substring(2, 8).toUpperCase()
+}
+
+function normalizeRoomCode(code: string): string {
+    return code.trim().toUpperCase()
 }
 
 function getRoomByPlayer(rooms: Record<string, Room>, playerId: string): Room | null {
@@ -246,7 +278,14 @@ function getGuestUsername(): string {
     return guestName
 }
 
-function getCachedCurrentUser(): { id: string; username: string; email: string; avatar: string } | null {
+type CachedCurrentUser = {
+    id: string
+    username: string
+    email: string
+    avatar: string
+}
+
+function getCachedCurrentUser(): CachedCurrentUser | null {
     if (!hasBrowserStorage()) {
         return null
     }
@@ -265,25 +304,105 @@ function getCachedCurrentUser(): { id: string; username: string; email: string; 
 
 function getCurrentPlayerProfile() {
     const currentUser = getCachedCurrentUser()
+    if (currentUser) {
+        return {
+            id: currentUser.id,
+            username: currentUser.username,
+            avatar: currentUser.avatar || DEFAULT_AVATAR,
+        }
+    }
 
     return {
-        username: currentUser?.username || getGuestUsername(),
-        avatar: currentUser?.avatar || DEFAULT_AVATAR,
+        id: getGuestPlayerId(),
+        username: getGuestUsername(),
+        avatar: DEFAULT_AVATAR,
     }
+}
+
+export function buildRoomHeaders() {
+    const profile = getCurrentPlayerProfile()
+    return {
+        'x-player-id': profile.id,
+        'x-player-name': encodeURIComponent(profile.username),
+        'x-player-avatar': encodeURIComponent(profile.avatar),
+    }
+}
+
+function normalizePlayer(player: BackendPlayer): Player {
+    return {
+        id: String(player.id || ''),
+        username: player.username || '',
+        avatar: player.avatar || DEFAULT_AVATAR,
+        isReady: Boolean(player.isReady ?? player.is_ready),
+        joinedAt: typeof player.joinedAt === 'number'
+            ? player.joinedAt
+            : typeof player.joined_at === 'number'
+                ? player.joined_at
+                : undefined,
+    }
+}
+
+function normalizeRoom(room: BackendRoom): Room {
+    return {
+        id: String(room.id || ''),
+        code: String(room.code || ''),
+        hostId: String(room.hostId ?? room.host_id ?? ''),
+        playerCount: Number(room.playerCount ?? room.player_count ?? 0),
+        roundTime: Number(room.roundTime ?? room.round_time ?? 0),
+        ruleId: String(room.ruleId ?? room.rule_id ?? ''),
+        ruleName: String(room.ruleName ?? room.rule_name ?? ''),
+        password: room.password ?? null,
+        players: Array.isArray(room.players) ? room.players.map(normalizePlayer) : [],
+        status: (room.status as Room['status']) || 'waiting',
+    }
+}
+
+function normalizeRuleOption(rule: Partial<GameRuleOption> & { player_count?: number }): GameRuleOption {
+    return {
+        id: String(rule.id || ''),
+        name: String(rule.name || ''),
+        playerCount: Number(rule.playerCount ?? rule.player_count ?? 0),
+        description: rule.description,
+    }
+}
+
+function persistRoom<T extends Room | null>(result: RoomResult<T>) {
+    if (!result.success) {
+        return result
+    }
+
+    if (result.data && 'code' in result.data && result.data.code) {
+        setCurrentRoomCode(result.data.code)
+    } else if (result.data === null) {
+        clearCurrentRoomCode()
+    }
+
+    return result
 }
 
 export const roomApi = {
     getCurrentPlayerId,
 
-    async getRuleOptions(): Promise<{ success: boolean; data?: GameRuleOption[]; message?: string }> {
-        return apiGet(API_CONFIG.endpoints.room.rules, {
-            mockDelay: 200,
-            mockFn: () => ({ success: true, data: mockRuleOptions }),
-        })
+    async getRuleOptions(): Promise<RoomResult<GameRuleOption[]>> {
+        const result = await apiGet<{ success: boolean; data?: Array<GameRuleOption & { player_count?: number }>; message?: string }>(
+            API_CONFIG.endpoints.room.rules,
+            {
+                useMock: shouldUseRoomMockApi(),
+                mockDelay: 200,
+                mockFn: () => ({ success: true, data: mockRuleOptions }),
+            },
+        )
+
+        return {
+            success: result.success,
+            data: result.data?.map(normalizeRuleOption),
+            message: result.message,
+        }
     },
 
-    async createRoom(params: CreateRoomParams): Promise<{ success: boolean; data?: Room; message?: string }> {
-        return apiPost(API_CONFIG.endpoints.room.create, params, {
+    async createRoom(params: CreateRoomParams): Promise<RoomResult<Room>> {
+        const result = await apiPost<RoomResult<BackendRoom>>(API_CONFIG.endpoints.room.create, params, {
+            useMock: shouldUseRoomMockApi(),
             mockDelay: 500,
             mockFn: () => {
                 const selectedRule = mockRuleOptions.find((rule) => rule.id === params.ruleId)
@@ -292,13 +411,12 @@ export const roomApi = {
                 }
 
                 const rooms = readRooms()
-                const playerId = getCurrentPlayerId()
                 const playerProfile = getCurrentPlayerProfile()
                 const now = Date.now()
                 const newRoom: Room = {
                     id: Math.random().toString(36).substring(2, 9),
                     code: generateRoomCode(),
-                    hostId: playerId,
+                    hostId: playerProfile.id,
                     playerCount: selectedRule.playerCount,
                     roundTime: params.roundTime,
                     ruleId: selectedRule.id,
@@ -306,7 +424,7 @@ export const roomApi = {
                     password: params.password || null,
                     players: [
                         {
-                            id: playerId,
+                            id: playerProfile.id,
                             username: playerProfile.username,
                             avatar: playerProfile.avatar,
                             isReady: true,
@@ -321,69 +439,104 @@ export const roomApi = {
                 setCurrentRoomCode(newRoom.code)
                 return { success: true, data: cloneRoom(newRoom) }
             },
+            headers: buildRoomHeaders(),
         })
+
+        const normalized = persistRoom({
+            success: result.success,
+            data: result.data ? normalizeRoom(result.data) : undefined,
+            message: result.message,
+        })
+
+        return {
+            success: normalized.success,
+            data: normalized.data || undefined,
+            message: normalized.message,
+        }
     },
 
-    async joinRoom(params: JoinRoomParams): Promise<{ success: boolean; data?: Room; message?: string }> {
-        return apiPost(API_CONFIG.endpoints.room.join, params, {
-            mockDelay: 500,
-            mockFn: () => {
-                const rooms = readRooms()
-                const room = rooms[params.code]
+    async joinRoom(params: JoinRoomParams): Promise<RoomResult<Room>> {
+        const normalizedCode = normalizeRoomCode(params.code)
+        const result = await apiPost<RoomResult<BackendRoom>>(
+            API_CONFIG.endpoints.room.join,
+            { ...params, code: normalizedCode },
+            {
+                useMock: shouldUseRoomMockApi(),
+                mockDelay: 500,
+                mockFn: () => {
+                    const rooms = readRooms()
+                    const room = rooms[normalizedCode]
 
-                if (!room) {
-                    return { success: false, message: 'Room does not exist.' }
-                }
-                if (room.password && room.password !== params.password) {
-                    return { success: false, message: 'Incorrect password.' }
-                }
-                if (room.status !== 'waiting') {
-                    return { success: false, message: 'This room has already started.' }
-                }
+                    if (!room) {
+                        return { success: false, message: 'Room does not exist.' }
+                    }
+                    if (room.password && room.password !== params.password) {
+                        return { success: false, message: 'Incorrect password.' }
+                    }
+                    if (room.status !== 'waiting') {
+                        return { success: false, message: 'This room has already started.' }
+                    }
 
-                const playerId = getCurrentPlayerId()
-                const playerProfile = getCurrentPlayerProfile()
-                const existingPlayer = room.players.find((player) => player.id === playerId)
-                if (!existingPlayer && room.players.length >= room.playerCount) {
-                    return { success: false, message: 'Room is full.' }
-                }
+                    const playerProfile = getCurrentPlayerProfile()
+                    const existingPlayer = room.players.find((player) => player.id === playerProfile.id)
+                    if (!existingPlayer && room.players.length >= room.playerCount) {
+                        return { success: false, message: 'Room is full.' }
+                    }
 
-                if (!existingPlayer) {
-                    room.players.push({
-                        id: playerId,
-                        username: playerProfile.username,
-                        avatar: playerProfile.avatar,
-                        isReady: false,
-                        joinedAt: Date.now(),
-                    })
-                } else {
-                    existingPlayer.username = playerProfile.username
-                    existingPlayer.avatar = playerProfile.avatar
-                }
+                    if (!existingPlayer) {
+                        room.players.push({
+                            id: playerProfile.id,
+                            username: playerProfile.username,
+                            avatar: playerProfile.avatar,
+                            isReady: false,
+                            joinedAt: Date.now(),
+                        })
+                    } else {
+                        existingPlayer.username = playerProfile.username
+                        existingPlayer.avatar = playerProfile.avatar
+                    }
 
-                writeRooms(rooms)
-                setCurrentRoomCode(room.code)
-                return { success: true, data: cloneRoom(room) }
+                    writeRooms(rooms)
+                    setCurrentRoomCode(room.code)
+                    return { success: true, data: cloneRoom(room) }
+                },
+                headers: buildRoomHeaders(),
             },
+        )
+
+        const normalized = persistRoom({
+            success: result.success,
+            data: result.data ? normalizeRoom(result.data) : undefined,
+            message: result.message,
         })
+
+        return {
+            success: normalized.success,
+            data: normalized.data || undefined,
+            message: normalized.message,
+        }
     },
 
-    async checkRoomPassword(code: string): Promise<{ success: boolean; hasPassword: boolean }> {
-        return apiGet(API_CONFIG.endpoints.room.checkPassword + `?code=${code}`, {
+    async checkRoomPassword(code: string): Promise<{ success: boolean; hasPassword: boolean; message?: string }> {
+        const normalizedCode = normalizeRoomCode(code)
+        return apiGet(`${API_CONFIG.endpoints.room.checkPassword}?code=${encodeURIComponent(normalizedCode)}`, {
+            useMock: shouldUseRoomMockApi(),
             mockDelay: 200,
             mockFn: () => {
                 const rooms = readRooms()
-                const room = rooms[code]
+                const room = rooms[normalizedCode]
                 if (room) {
                     return { success: true, hasPassword: !!room.password }
                 }
-                return { success: false, hasPassword: false }
+                return { success: false, hasPassword: false, message: 'Room does not exist.' }
             },
+            headers: buildRoomHeaders(),
         })
     },
 
-    async getCurrentRoom(): Promise<{ success: boolean; data?: Room | null }> {
-        return apiGet(API_CONFIG.endpoints.room.getCurrent, {
+    async getCurrentRoom(): Promise<RoomResult<Room | null>> {
+        const result = await apiGet<RoomResult<BackendRoom | null>>(API_CONFIG.endpoints.room.getCurrent, {
+            useMock: shouldUseRoomMockApi(),
             mockDelay: 200,
             mockFn: () => {
                 const rooms = readRooms()
@@ -399,53 +552,72 @@ export const roomApi = {
                 setCurrentRoomCode(room.code)
                 return { success: true, data: cloneRoom(room) }
             },
+            headers: buildRoomHeaders(),
+        })
+
+        return persistRoom({
+            success: result.success,
+            data: result.data ? normalizeRoom(result.data) : result.data === null ? null : undefined,
+            message: result.message,
         })
     },
 
-    async getRoomByCode(code: string): Promise<{ success: boolean; data?: Room | null; message?: string }> {
-        return apiGet(`${API_CONFIG.endpoints.room.getCurrent}?code=${code}`, {
-            mockDelay: 200,
-            mockFn: () => {
-                const rooms = readRooms()
-                const room = rooms[code]
-                if (!room) {
-                    return { success: false, data: null, message: 'Room does not exist.' }
-                }
+    async getRoomByCode(code: string): Promise<RoomResult<Room | null>> {
+        const normalizedCode = normalizeRoomCode(code)
+        const result = await apiGet<RoomResult<BackendRoom | null>>(
+            `${API_CONFIG.endpoints.room.getCurrent}?code=${encodeURIComponent(normalizedCode)}`,
+            {
+                useMock: shouldUseRoomMockApi(),
+                mockDelay: 200,
+                mockFn: () => {
+                    const rooms = readRooms()
+                    const room = rooms[normalizedCode]
+                    if (!room) {
+                        return { success: false, data: null, message: 'Room does not exist.' }
+                    }
 
-                setCurrentRoomCode(room.code)
-                return { success: true, data: cloneRoom(room) }
+                    setCurrentRoomCode(room.code)
+                    return { success: true, data: cloneRoom(room) }
+                },
+                headers: buildRoomHeaders(),
             },
+        )
+
+        return persistRoom({
+            success: result.success,
+            data: result.data ? normalizeRoom(result.data) : result.data === null ? null : undefined,
+            message: result.message,
         })
     },
 
     async getRoomRule(roomId?: string): Promise<{ success: boolean; data?: RoomRuleResponse; message?: string }> {
         const query = roomId ? `?room_id=${encodeURIComponent(roomId)}` : ''
-        const result = await apiGet<RoomRuleResponse | { success: boolean; data?: RoomRuleResponse; message?: string }>(API_CONFIG.endpoints.room.getRule + query, {
-            mockDelay: 200,
-            mockFn: () => {
-                const rooms = readRooms()
-                const playerId = getCurrentPlayerId()
-                const currentCode = getCurrentRoomCode()
-                const room = roomId
-                    ? Object.values(rooms).find((item) => item.id === roomId || item.code === roomId)
-                    : currentCode
-                        ? rooms[currentCode] || getRoomByPlayer(rooms, playerId)
-                        : getRoomByPlayer(rooms, playerId)
-                const rule = room ? mockRoomRules[room.ruleId] || mockRoomRules.classic : mockRoomRules.classic
+        const result = await apiGet<RoomRuleResponse | { success: boolean; data?: RoomRuleResponse; message?: string }>(
+            API_CONFIG.endpoints.room.getRule + query,
+            {
+                useMock: true,
+                mockDelay: 200,
+                mockFn: () => {
+                    const rooms = readRooms()
+                    const playerId = getCurrentPlayerId()
+                    const currentCode = getCurrentRoomCode()
+                    const room = roomId
+                        ? Object.values(rooms).find((item) => item.id === roomId || item.code === roomId)
+                        : currentCode
+                            ? rooms[currentCode] || getRoomByPlayer(rooms, playerId)
+                            : getRoomByPlayer(rooms, playerId)
+                    const rule = room ? mockRoomRules[room.ruleId] || mockRoomRules.classic : mockRoomRules.classic
 
-                if (!rule) {
-                    return { success: false, message: '规则不存在' }
-                }
-
-                return {
-                    success: true,
-                    data: {
-                        room_id: room?.id || roomId || 'mock-room',
-                        rule,
-                    },
-                }
+                    return {
+                        success: true,
+                        data: {
+                            room_id: room?.id || roomId || 'mock-room',
+                            rule,
+                        },
+                    }
+                },
             },
-        })
+        )
 
         if ('room_id' in result && 'rule' in result) {
             return { success: true, data: result }
@@ -454,66 +626,91 @@ export const roomApi = {
         return result
     },
 
-    async setReady(isReady: boolean): Promise<{ success: boolean; data?: Room | null; message?: string }> {
-        return apiPost(`${API_CONFIG.endpoints.room.getCurrent}/ready`, { isReady }, {
-            mockDelay: 200,
-            mockFn: () => {
-                const rooms = readRooms()
-                const playerId = getCurrentPlayerId()
-                const room = getRoomByPlayer(rooms, playerId)
+    async setReady(isReady: boolean): Promise<RoomResult<Room | null>> {
+        const result = await apiPost<RoomResult<BackendRoom | null>>(
+            `${API_CONFIG.endpoints.room.getCurrent}/ready`,
+            { isReady },
+            {
+                useMock: shouldUseRoomMockApi(),
+                mockDelay: 200,
+                mockFn: () => {
+                    const rooms = readRooms()
+                    const playerId = getCurrentPlayerId()
+                    const room = getRoomByPlayer(rooms, playerId)
 
-                if (!room) {
-                    clearCurrentRoomCode()
-                    return { success: false, data: null, message: 'Room does not exist.' }
-                }
-                if (room.status !== 'waiting') {
-                    return { success: false, data: cloneRoom(room), message: 'Game has already started.' }
-                }
+                    if (!room) {
+                        clearCurrentRoomCode()
+                        return { success: false, data: null, message: 'Room does not exist.' }
+                    }
+                    if (room.status !== 'waiting') {
+                        return { success: false, data: cloneRoom(room), message: 'Game has already started.' }
+                    }
 
-                const player = room.players.find((item) => item.id === playerId)
-                if (!player) {
-                    return { success: false, data: null, message: 'Player is not in the room.' }
-                }
+                    const player = room.players.find((item) => item.id === playerId)
+                    if (!player) {
+                        return { success: false, data: null, message: 'Player is not in the room.' }
+                    }
 
-                player.isReady = isReady
-                writeRooms(rooms)
-                return { success: true, data: cloneRoom(room) }
+                    player.isReady = isReady
+                    writeRooms(rooms)
+                    return { success: true, data: cloneRoom(room) }
+                },
+                headers: buildRoomHeaders(),
             },
+        )
+
+        return persistRoom({
+            success: result.success,
+            data: result.data ? normalizeRoom(result.data) : result.data === null ? null : undefined,
+            message: result.message,
         })
     },
 
-    async startGame(): Promise<{ success: boolean; data?: Room | null; message?: string }> {
-        return apiPost(`${API_CONFIG.endpoints.room.getCurrent}/start`, {}, {
-            mockDelay: 300,
-            mockFn: () => {
-                const rooms = readRooms()
-                const playerId = getCurrentPlayerId()
-                const room = getRoomByPlayer(rooms, playerId)
+    async startGame(): Promise<RoomResult<Room | null>> {
+        const result = await apiPost<RoomResult<BackendRoom | null>>(
+            `${API_CONFIG.endpoints.room.getCurrent}/start`,
+            {},
+            {
+                useMock: shouldUseRoomMockApi(),
+                mockDelay: 300,
+                mockFn: () => {
+                    const rooms = readRooms()
+                    const playerId = getCurrentPlayerId()
+                    const room = getRoomByPlayer(rooms, playerId)
 
-                if (!room) {
-                    clearCurrentRoomCode()
-                    return { success: false, data: null, message: 'Room does not exist.' }
-                }
-                if (room.hostId !== playerId) {
-                    return { success: false, data: cloneRoom(room), message: 'Only the host can start the game.' }
-                }
-                if (!isRoomReadyToStart(room)) {
-                    return {
-                        success: false,
-                        data: cloneRoom(room),
-                        message: 'The room must be full and every player must be ready.',
+                    if (!room) {
+                        clearCurrentRoomCode()
+                        return { success: false, data: null, message: 'Room does not exist.' }
                     }
-                }
+                    if (room.hostId !== playerId) {
+                        return { success: false, data: cloneRoom(room), message: 'Only the host can start the game.' }
+                    }
+                    if (!isRoomReadyToStart(room)) {
+                        return {
+                            success: false,
+                            data: cloneRoom(room),
+                            message: 'The room must be full and every player must be ready.',
+                        }
+                    }
 
-                room.status = 'playing'
-                writeRooms(rooms)
-                return { success: true, data: cloneRoom(room) }
+                    room.status = 'playing'
+                    writeRooms(rooms)
+                    return { success: true, data: cloneRoom(room) }
+                },
+                headers: buildRoomHeaders(),
             },
+        )
+
+        return persistRoom({
+            success: result.success,
+            data: result.data ? normalizeRoom(result.data) : result.data === null ? null : undefined,
+            message: result.message,
         })
     },
 
     async leaveRoom(): Promise<{ success: boolean }> {
-        return apiPost(API_CONFIG.endpoints.room.leave, {}, {
+        const result = await apiPost<{ success: boolean }>(API_CONFIG.endpoints.room.leave, {}, {
+            useMock: shouldUseRoomMockApi(),
             mockDelay: 200,
             mockFn: () => {
                 const rooms = readRooms()
@@ -541,6 +738,13 @@ export const roomApi = {
                 clearCurrentRoomCode()
                 return { success: true }
             },
+            headers: buildRoomHeaders(),
         })
+
+        if (result.success) {
+            clearCurrentRoomCode()
+        }
+
+        return { success: result.success }
     },
 }
