@@ -82,7 +82,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { roomApi } from '../api/room'
+import { validateCardPlay, type PlayCard, type RoomRuleDefinition, type RoundPlayRecord } from '../utils/cardPlayRules'
 
 type CardStyle = {
   fontFamily: string
@@ -91,12 +94,23 @@ type CardStyle = {
   backImage: string
 }
 
-type CardItem = {
-  id: string
-  rank: string
+type CardItem = PlayCard & {
   suit: string
 }
 
+type RulePropertyConfig = {
+  config?: Array<{
+    display: string
+    value: number
+  }>
+}
+
+type RuleCardClass = {
+  default_properties?: Record<string, RulePropertyConfig>
+  user_properties?: Record<string, RulePropertyConfig>
+}
+
+const route = useRoute()
 const storageKey = 'wildcard-card-style'
 
 const defaultCardStyle: CardStyle = {
@@ -124,6 +138,8 @@ const readCardStyle = () => {
 }
 
 const cardStyle = readCardStyle()
+const playRule = ref<RoomRuleDefinition | null>(null)
+const previousRoundPlay = ref<RoundPlayRecord | null>(null)
 const playerCount = ref(3)
 const currentPlayerId = ref('me')
 const lastAction = ref('等待出牌')
@@ -150,6 +166,48 @@ const handCards = ref<CardItem[]>([
   { id: 'hand-13', rank: '5', suit: '♥' },
   { id: 'hand-14', rank: '4', suit: '♥' }
 ])
+
+const findPointPropertyConfig = () => {
+  const cardClass = playRule.value?.classes?.card as RuleCardClass | undefined
+  const properties = {
+    ...(cardClass?.default_properties || {}),
+    ...(cardClass?.user_properties || {}),
+  }
+
+  return properties.point || properties.rank || properties['点数']
+}
+
+const findPointByRank = (rank: string) => {
+  const config = findPointPropertyConfig()?.config || []
+  const matchedOption = config.find((option) => option.display === rank || String(option.value) === rank)
+
+  if (typeof matchedOption?.value === 'number') {
+    return matchedOption.value
+  }
+
+  const numericRank = Number(rank)
+  return Number.isFinite(numericRank) ? numericRank : undefined
+}
+
+const readExistingPoint = (card: CardItem) => {
+  const point = card.point ?? card.properties?.point ?? card.properties?.rank ?? card.properties?.['点数']
+  return typeof point === 'number' ? point : undefined
+}
+
+const toPlayableCard = (card: CardItem): PlayCard => {
+  const point = readExistingPoint(card) ?? findPointByRank(card.rank) ?? 0
+
+  return {
+    ...card,
+    point,
+    properties: {
+      ...card.properties,
+      rank: point ?? card.rank,
+      point: point ?? card.properties?.point ?? card.rank,
+      suit: card.properties?.suit ?? card.suit,
+    },
+  }
+}
 
 const opponents = computed(() => {
   const count = Math.max(2, Math.min(8, Number(playerCount.value) || 3))
@@ -201,8 +259,23 @@ const playSelectedCards = () => {
     return
   }
 
-  const selectedCards = handCards.value.filter(card => selectedCardIds.value.includes(card.id))
-  tableCards.value = selectedCards
+  const playableHandCards = handCards.value.map(toPlayableCard)
+  const selectedIdSet = new Set(selectedCardIds.value)
+  const selectedCards = playableHandCards.filter(card => selectedIdSet.has(card.id))
+  const validationResult = validateCardPlay({
+    selectedCards,
+    handCards: playableHandCards,
+    rule: playRule.value,
+    previousRoundPlay: previousRoundPlay.value,
+  })
+
+  if (!validationResult.legal) {
+    lastAction.value = validationResult.message
+    return
+  }
+
+  tableCards.value = handCards.value.filter(card => selectedIdSet.has(card.id))
+  previousRoundPlay.value = validationResult.roundPlay || null
   handCards.value = handCards.value.filter(card => !selectedCardIds.value.includes(card.id))
   selectedCardIds.value = []
   lastAction.value = '已出牌'
@@ -214,6 +287,25 @@ const skipTurn = () => {
   lastAction.value = '已跳过'
   currentPlayerId.value = opponents.value[0]?.id || 'me'
 }
+
+async function loadPlayableRule() {
+  const roomCode = String(route.params.roomCode || '')
+  const roomResult = roomCode
+    ? await roomApi.getRoomByCode(roomCode)
+    : await roomApi.getCurrentRoom()
+  const ruleResult = await roomApi.getRoomRule(roomResult.data?.id || roomResult.data?.code)
+
+  if (ruleResult.success && ruleResult.data?.rule) {
+    playRule.value = ruleResult.data.rule
+    return
+  }
+
+  lastAction.value = ruleResult.message || '规则加载失败，暂时无法出牌'
+}
+
+onMounted(() => {
+  void loadPlayableRule()
+})
 </script>
 
 <style scoped>
