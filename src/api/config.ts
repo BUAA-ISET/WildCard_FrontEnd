@@ -1,7 +1,7 @@
 export const API_CONFIG = {
     BASE_URL: 'http://localhost:3000',
-    // 默认保留房间/规则 mock，仅优先打通用户系统
-    USE_MOCK: true,
+    // 规则保存、房间创建和开局需要后端规则引擎解析，因此默认走真实后端。
+    USE_MOCK: false,
     userUseMock: false,
 
     endpoints: {
