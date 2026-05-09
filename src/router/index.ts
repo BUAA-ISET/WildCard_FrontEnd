@@ -11,6 +11,7 @@ import UserView from '../views/UserView.vue'
 import JoinRoomView from '../views/JoinRoomView.vue'
 import CreateRoomView from '../views/CreateRoomView.vue'
 import RuleBuilderView from '../views/RuleBuilderView.vue'
+import { roomApi, getRoomEntryPath } from '../api/room'
 
 
 const routes: RouteRecordRaw[] = [
@@ -98,6 +99,19 @@ if (import.meta.env.VITE_ENABLE_TEST_SANDBOX === 'true') {
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach(async (to) => {
+  if (to.path !== '/battle') {
+    return true
+  }
+
+  const currentRoom = await roomApi.getCurrentRoom()
+  if (!currentRoom.success || !currentRoom.data) {
+    return { path: '/' }
+  }
+
+  return getRoomEntryPath(currentRoom.data)
 })
 
 export default router

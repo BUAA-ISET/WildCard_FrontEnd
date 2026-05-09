@@ -1,8 +1,23 @@
+const resolveBaseUrl = (): string => {
+    const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+    if (configuredBaseUrl) {
+        return configuredBaseUrl
+    }
+
+    if (typeof window !== 'undefined') {
+        return `${window.location.protocol}//${window.location.hostname}:3000`
+    }
+
+    return 'http://localhost:3000'
+}
+
 export const API_CONFIG = {
     BASE_URL: 'http://81.70.231.146:3000',
     // 规则保存、房间创建和开局需要后端规则引擎解析，因此默认走真实后端。
     USE_MOCK: false,
+
     userUseMock: false,
+    roomUseMock: false,
 
     endpoints: {
         user: {
@@ -33,3 +48,4 @@ export const getApiUrl = (endpoint: string): string => {
 
 export const shouldUseMockApi = (): boolean => API_CONFIG.USE_MOCK
 export const shouldUseUserMockApi = (): boolean => API_CONFIG.userUseMock ?? API_CONFIG.USE_MOCK
+export const shouldUseRoomMockApi = (): boolean => API_CONFIG.roomUseMock ?? API_CONFIG.USE_MOCK

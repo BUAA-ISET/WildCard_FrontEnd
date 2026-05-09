@@ -8,6 +8,7 @@ interface RequestOptions {
     useMock?: boolean
     mockDelay?: number
     mockFn?: () => any
+    headers?: Record<string, string>
 }
 
 const DEFAULT_MOCK_DELAY = 300
@@ -26,7 +27,8 @@ export async function apiRequest<T = any>(
         body,
         useMock = shouldUseMockApi(),
         mockDelay = DEFAULT_MOCK_DELAY,
-        mockFn
+        mockFn,
+        headers = {}
     } = options
 
     if (useMock) {
@@ -40,14 +42,23 @@ export async function apiRequest<T = any>(
     }
 
     const url = getApiUrl(endpoint)
-    const response = await fetch(url, {
-        method,
-        credentials: 'include',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: body ? JSON.stringify(body) : undefined,
-    })
+    let response: Response
+    try {
+        response = await fetch(url, {
+            method,
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                ...headers,
+            },
+            body: body ? JSON.stringify(body) : undefined,
+        })
+    } catch (error) {
+        return {
+            success: false,
+            message: error instanceof Error ? error.message : 'Network request failed'
+        } as T
+    }
 
     const text = await response.text()
     const result = text ? JSON.parse(text) : {}
