@@ -218,7 +218,7 @@ async function onSendVerificationCode() {
 
     if (result.debugCode) {
       registerForm.verificationCode = result.debugCode
-      ElMessage.success(`验证码已发送，当前模拟验证码：${result.debugCode}`)
+      ElMessage.success(`验证码已发送，当前调试验证码：${result.debugCode}`)
     } else {
       ElMessage.success(result.message || '验证码已发送')
     }
