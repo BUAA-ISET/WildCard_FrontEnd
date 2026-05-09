@@ -92,7 +92,7 @@
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
-import { shouldUseMockApi } from '../api/config'
+import { shouldUseUserMockApi } from '../api/config'
 import { userApi } from '../api/user'
 import { useUserStore } from '../stores/userStore'
 import defaultAvatarUrl from '../assets/default-avatar.svg'
@@ -100,7 +100,7 @@ import defaultAvatarUrl from '../assets/default-avatar.svg'
 
 const defaultAvatar = defaultAvatarUrl;
 const SEND_CODE_COOLDOWN = 60
-const isMockApi = shouldUseMockApi()
+const isMockApi = shouldUseUserMockApi()
 
 const userStore = useUserStore()
 const { isLoggedIn, username, email, avatar } = storeToRefs(userStore)

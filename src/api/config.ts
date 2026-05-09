@@ -1,7 +1,8 @@
 export const API_CONFIG = {
     BASE_URL: 'http://localhost:3000',
-    // 获得后端api时将USE_MOCK设置为false
+    // 默认保留房间/规则 mock，仅优先打通用户系统
     USE_MOCK: true,
+    userUseMock: false,
 
     endpoints: {
         user: {
@@ -30,3 +31,4 @@ export const getApiUrl = (endpoint: string): string => {
 }
 
 export const shouldUseMockApi = (): boolean => API_CONFIG.USE_MOCK
+export const shouldUseUserMockApi = (): boolean => API_CONFIG.userUseMock ?? API_CONFIG.USE_MOCK
