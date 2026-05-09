@@ -8,6 +8,7 @@
       <div class="header-actions">
         <el-button @click="showJson = !showJson">{{ showJson ? '隐藏 JSON' : '显示 JSON' }}</el-button>
         <el-button type="primary" @click="saveDesign">保存草稿</el-button>
+        <el-button type="success" @click="uploadCompletedRule">完成并上传规则</el-button>
       </div>
     </header>
 
@@ -715,20 +716,36 @@ const copyJson = async () => {
   ElMessage.success('JSON 已复制')
 }
 
-const saveDesign = async () => {
+const submitRuleDesign = async (successMessage: string) => {
   const hasError = validations.value.some(item => item.level === 'error')
 
   if (hasError) {
-    ElMessage.error('存在错误，请先修正后再保存')
+    ElMessage.error('存在错误，请先修正后再上传')
     showJson.value = true
     return
   }
 
-  const result = await ruleApi.saveRuleDesign(exportedDesign.value)
+  // 用户确认规则完成后，将前端构建器导出的运行时 JSON 发给后端解析并发布。
+  const result = await ruleApi.saveRuleDesign({
+    name: design.info.name,
+    playerCount: design.info.playerCount,
+    description: design.info.description,
+    design: exportedDesign.value,
+  })
 
   if (result.success) {
-    ElMessage.success('草稿已保存到本地，后端接口接入后会在同一入口提交')
+    ElMessage.success(successMessage)
+  } else {
+    ElMessage.error(result.message || '保存失败，请稍后重试')
   }
+}
+
+const saveDesign = async () => {
+  await submitRuleDesign('规则草稿已保存并发布，可在创建房间时选择')
+}
+
+const uploadCompletedRule = async () => {
+  await submitRuleDesign('规则 JSON 已上传后端并发布，可用于创建房间')
 }
 </script>
 
