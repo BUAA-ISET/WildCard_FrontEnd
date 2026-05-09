@@ -29,7 +29,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { roomApi } from '../api/room'
+import { roomApi, getRoomEntryPath } from '../api/room'
 
 const router = useRouter()
 const roomCode = ref('')
@@ -56,8 +56,7 @@ async function onRoomCodeInput() {
 async function joinRoomWithoutPassword() {
     const result = await roomApi.joinRoom({ code: roomCode.value })
     if (result.success && result.data) {
-        sessionStorage.setItem('currentRoomCode', result.data.code)
-        router.push(`/game/${roomCode.value}`)
+        router.push(getRoomEntryPath(result.data))
     } else {
         ElMessage.error(result.message || '加入房间失败')
     }
@@ -74,8 +73,7 @@ async function onJoin() {
         password: roomPassword.value 
     })
     if (result.success && result.data) {
-        sessionStorage.setItem('currentRoomCode', result.data.code)
-        router.push(`/game/${roomCode.value}`)
+        router.push(getRoomEntryPath(result.data))
     } else {
         ElMessage.error(result.message || '密码错误')
     }

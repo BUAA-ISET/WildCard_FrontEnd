@@ -83,8 +83,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { roomApi } from '../api/room'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { roomApi, DEFAULT_AVATAR, getRoomEntryPath, type Room } from '../api/room'
 import { validateCardPlay, type PlayCard, type RoomRuleDefinition, type RoundPlayRecord } from '../utils/cardPlayRules'
 
 type CardStyle = {
@@ -111,6 +112,7 @@ type RuleCardClass = {
 }
 
 const route = useRoute()
+const router = useRouter()
 const storageKey = 'wildcard-card-style'
 
 const defaultCardStyle: CardStyle = {
@@ -139,9 +141,10 @@ const readCardStyle = () => {
 
 const cardStyle = readCardStyle()
 const playRule = ref<RoomRuleDefinition | null>(null)
+const currentRoom = ref<Room | null>(null)
 const previousRoundPlay = ref<RoundPlayRecord | null>(null)
 const playerCount = ref(3)
-const currentPlayerId = ref('me')
+const currentPlayerId = ref(roomApi.getCurrentPlayerId())
 const lastAction = ref('等待出牌')
 const selectedCardIds = ref<string[]>([])
 const tableCards = ref<CardItem[]>([
@@ -210,17 +213,29 @@ const toPlayableCard = (card: CardItem): PlayCard => {
 }
 
 const opponents = computed(() => {
+  if (currentRoom.value) {
+    return currentRoom.value.players
+      .filter((player) => player.id !== currentPlayerId.value)
+      .map((player) => ({
+        id: player.id,
+        name: player.username || 'Player',
+        avatar: player.avatar || DEFAULT_AVATAR,
+        cardCount: 13
+      }))
+  }
+
   const count = Math.max(2, Math.min(8, Number(playerCount.value) || 3))
 
   return Array.from({ length: count - 1 }, (_, index) => ({
     id: `player-${index + 1}`,
     name: String.fromCharCode(65 + index),
+    avatar: DEFAULT_AVATAR,
     cardCount: 17 - index * 2
   }))
 })
 
 const turnText = computed(() => {
-  if (currentPlayerId.value === 'me') {
+  if (currentPlayerId.value === roomApi.getCurrentPlayerId()) {
     return `当前轮到你，${lastAction.value}`
   }
 
@@ -279,13 +294,13 @@ const playSelectedCards = () => {
   handCards.value = handCards.value.filter(card => !selectedCardIds.value.includes(card.id))
   selectedCardIds.value = []
   lastAction.value = '已出牌'
-  currentPlayerId.value = opponents.value[0]?.id || 'me'
+  currentPlayerId.value = opponents.value[0]?.id || roomApi.getCurrentPlayerId()
 }
 
 const skipTurn = () => {
   selectedCardIds.value = []
   lastAction.value = '已跳过'
-  currentPlayerId.value = opponents.value[0]?.id || 'me'
+  currentPlayerId.value = opponents.value[0]?.id || roomApi.getCurrentPlayerId()
 }
 
 async function loadPlayableRule() {
@@ -293,6 +308,22 @@ async function loadPlayableRule() {
   const roomResult = roomCode
     ? await roomApi.getRoomByCode(roomCode)
     : await roomApi.getCurrentRoom()
+
+  if (!roomResult.success || !roomResult.data) {
+    ElMessage.error(roomResult.message || 'Room does not exist.')
+    await router.replace('/')
+    return
+  }
+
+  currentRoom.value = roomResult.data
+  playerCount.value = roomResult.data.playerCount
+
+  const expectedPath = getRoomEntryPath(roomResult.data)
+  if (route.path !== expectedPath) {
+    await router.replace(expectedPath)
+    return
+  }
+
   const ruleResult = await roomApi.getRoomRule(roomResult.data?.id || roomResult.data?.code)
 
   if (ruleResult.success && ruleResult.data?.rule) {

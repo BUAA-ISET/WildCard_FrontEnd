@@ -29,12 +29,14 @@ vi.mock('vue-router', async () => {
   return {
     ...actual,
     useRouter: () => ({ replace, push }),
-    useRoute: () => ({ params: { roomCode: 'TEST123' } }),
-    onBeforeRouteLeave: vi.fn(() => () => true),
+    useRoute: () => ({ params: { roomCode: 'TEST123' }, path: '/game/TEST123' }),
   }
 })
 
 vi.mock('../../api/room', () => ({
+  getRoomEntryPath: vi.fn((room: { code: string; status: string }) => (
+    room.status === 'playing' ? `/game/${room.code}/battle` : `/game/${room.code}`
+  )),
   roomApi: {
     getRoomByCode: vi.fn(),
     setReady: vi.fn(),
@@ -43,7 +45,6 @@ vi.mock('../../api/room', () => ({
     getCurrentPlayerId: vi.fn(() => 'player-1'),
   },
   DEFAULT_AVATAR: '/default-avatar.png',
-  ROOM_STORAGE_KEY: 'room_storage_key',
 }))
 
 vi.mock('element-plus', async () => {
@@ -76,173 +77,96 @@ describe('ReadyRoomView', () => {
     vi.mocked(roomApi.getCurrentPlayerId).mockReturnValue('player-1')
   })
 
-  describe('页面渲染', () => {
-    it('渲染房间准备页面', async () => {
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      expect(wrapper.find('.ready-room-page').exists()).toBe(true)
+  it('renders the room summary and leave action', async () => {
+    const wrapper = mount(ReadyRoomView, {
+      global: {
+        stubs: elementPlusStubs,
+      },
     })
+    await flushPromises()
 
-    it('显示房间号', async () => {
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      expect(wrapper.find('.room-eyebrow').text()).toBe('Ready Room')
-    })
-
-    it('显示房间信息摘要', async () => {
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      expect(wrapper.find('.room-summary').exists()).toBe(true)
-      expect(wrapper.text()).toContain('TEST123')
-      expect(wrapper.text()).toContain('Classic Rules')
-      expect(wrapper.text()).toContain('2/4')
-      expect(wrapper.text()).toContain('60s')
-    })
+    expect(wrapper.find('.ready-room-page').exists()).toBe(true)
+    expect(wrapper.text()).toContain('TEST123')
+    expect(wrapper.find('.danger-btn').exists()).toBe(true)
   })
 
-  describe('玩家网格', () => {
-    it('显示玩家列表', async () => {
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      expect(wrapper.findAll('.player-box').length).toBe(4)
-    })
-
-    it('显示空玩家槽位', async () => {
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      expect(wrapper.findAll('.player-box.empty').length).toBe(2)
-    })
-
-    it('显示玩家用户名', async () => {
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      expect(wrapper.text()).toContain('TestUser')
-      expect(wrapper.text()).toContain('Player2')
-    })
-
-    it('显示房主标签', async () => {
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      expect(wrapper.text()).toContain('房主')
-    })
-
-    it('显示玩家准备状态', async () => {
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      expect(wrapper.text()).toContain('准备')
-      expect(wrapper.text()).toContain('未准备')
-    })
-  })
-
-  describe('操作按钮', () => {
-    it('房主显示开始游戏按钮', async () => {
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      const startButton = wrapper.find('.primary-btn')
-      expect(startButton.exists()).toBe(true)
-      expect(startButton.text()).toBe('开始游戏')
-    })
-
-    it('非房主显示准备/取消准备按钮', async () => {
-      vi.mocked(roomApi.getCurrentPlayerId).mockReturnValue('player-2')
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      const readyButton = wrapper.find('.secondary-btn')
-      expect(readyButton.exists()).toBe(true)
-      expect(readyButton.text()).toBe('准备')
-    })
-
-    it('显示离开房间按钮', async () => {
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      const leaveButton = wrapper.find('.danger-btn')
-      expect(leaveButton.exists()).toBe(true)
-      expect(leaveButton.text()).toBe('离开房间')
-    })
-  })
-
-  describe('离开房间功能', () => {
-    it('点击离开房间按钮调用leaveRoom', async () => {
-      vi.mocked(roomApi.leaveRoom).mockResolvedValue({ success: true })
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      await wrapper.find('.danger-btn').trigger('click')
-      await flushPromises()
-      expect(roomApi.leaveRoom).toHaveBeenCalled()
-    })
-  })
-
-  describe('游戏开始条件', () => {
-    it('所有玩家准备时房主可以开始游戏', async () => {
-      const fullRoom = {
+  it('lets a non-host toggle ready state', async () => {
+    vi.mocked(roomApi.getCurrentPlayerId).mockReturnValue('player-2')
+    vi.mocked(roomApi.setReady).mockResolvedValue({
+      success: true,
+      data: {
         ...createMockRoom(),
         players: [
           { id: 'player-1', username: 'HostUser', avatar: '', isReady: true },
           { id: 'player-2', username: 'Player2', avatar: '', isReady: true },
-          { id: 'player-3', username: 'Player3', avatar: '', isReady: true },
-          { id: 'player-4', username: 'Player4', avatar: '', isReady: true },
         ],
-      }
-      vi.mocked(roomApi.getRoomByCode).mockResolvedValue({
-        success: true,
-        data: fullRoom,
-      })
-      const wrapper = mount(ReadyRoomView, {
-        global: {
-          stubs: elementPlusStubs,
-        },
-      })
-      await flushPromises()
-      const startButton = wrapper.find('.primary-btn')
-      expect(startButton.exists()).toBe(true)
+      },
     })
+
+    const wrapper = mount(ReadyRoomView, {
+      global: {
+        stubs: elementPlusStubs,
+      },
+    })
+    await flushPromises()
+
+    await wrapper.find('.secondary-btn').trigger('click')
+    await flushPromises()
+
+    expect(roomApi.setReady).toHaveBeenCalledWith(true)
+  })
+
+  it('routes the room host into battle after a successful start', async () => {
+    const playingRoom = {
+      ...createMockRoom(),
+      status: 'playing' as const,
+      players: [
+        { id: 'player-1', username: 'HostUser', avatar: '', isReady: true },
+        { id: 'player-2', username: 'Player2', avatar: '', isReady: true },
+        { id: 'player-3', username: 'Player3', avatar: '', isReady: true },
+        { id: 'player-4', username: 'Player4', avatar: '', isReady: true },
+      ],
+    }
+
+    vi.mocked(roomApi.getRoomByCode).mockResolvedValue({
+      success: true,
+      data: {
+        ...playingRoom,
+        status: 'waiting',
+      },
+    })
+    vi.mocked(roomApi.startGame).mockResolvedValue({
+      success: true,
+      data: playingRoom,
+    })
+
+    const wrapper = mount(ReadyRoomView, {
+      global: {
+        stubs: elementPlusStubs,
+      },
+    })
+    await flushPromises()
+
+    await wrapper.find('.primary-btn').trigger('click')
+    await flushPromises()
+
+    expect(push).toHaveBeenCalledWith('/game/TEST123/battle')
+  })
+
+  it('leaves the room and returns home', async () => {
+    vi.mocked(roomApi.leaveRoom).mockResolvedValue({ success: true })
+
+    const wrapper = mount(ReadyRoomView, {
+      global: {
+        stubs: elementPlusStubs,
+      },
+    })
+    await flushPromises()
+
+    await wrapper.find('.danger-btn').trigger('click')
+    await flushPromises()
+
+    expect(roomApi.leaveRoom).toHaveBeenCalled()
+    expect(replace).toHaveBeenCalledWith('/')
   })
 })

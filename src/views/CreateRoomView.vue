@@ -49,7 +49,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { roomApi } from '../api/room'
+import { roomApi, getRoomEntryPath } from '../api/room'
 import type { GameRuleOption } from '../api/room'
 
 const router = useRouter()
@@ -87,8 +87,7 @@ async function onCreateRoom() {
 
   if (result.success && result.data) {
     ElMessage.success(`Room created successfully. Code: ${result.data.code}`)
-    sessionStorage.setItem('currentRoomCode', result.data.code)
-    router.push(`/game/${result.data.code}`)
+    router.push(getRoomEntryPath(result.data))
   } else {
     ElMessage.error(result.message || 'Failed to create room')
   }

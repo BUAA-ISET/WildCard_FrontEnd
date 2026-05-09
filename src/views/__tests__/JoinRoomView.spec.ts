@@ -12,6 +12,9 @@ vi.mock('vue-router', () => ({
 }))
 
 vi.mock('../../api/room', () => ({
+  getRoomEntryPath: vi.fn((room: { code: string; status: string }) => (
+    room.status === 'playing' ? `/game/${room.code}/battle` : `/game/${room.code}`
+  )),
   roomApi: {
     checkRoomPassword: vi.fn(),
     joinRoom: vi.fn(),
@@ -81,7 +84,6 @@ describe('JoinRoomView', () => {
     await flushPromises()
 
     expect(roomApi.joinRoom).toHaveBeenCalledWith({ code: '222333' })
-    expect(sessionStorage.getItem('currentRoomCode')).toBe('222333')
     expect(push).toHaveBeenCalledWith('/game/222333')
   })
 

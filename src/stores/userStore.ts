@@ -90,13 +90,18 @@ export const useUserStore = defineStore('user', {
       return result
     },
     async fetchCurrentUser() {
-      const result = await userApi.getCurrentUser()
-      if (result.success) {
-        this.applyUser(result.data ?? null)
-      } else {
+      try {
+        const result = await userApi.getCurrentUser()
+        if (result.success) {
+          this.applyUser(result.data ?? null)
+        } else {
+          this.applyUser(null)
+        }
+        return result
+      } catch {
         this.applyUser(null)
+        return { success: false, message: 'Failed to fetch current user' }
       }
-      return result
     },
     setUser(user: User | null) {
       this.applyUser(user)
