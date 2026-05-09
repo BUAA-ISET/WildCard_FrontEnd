@@ -1,9 +1,22 @@
+const resolveBaseUrl = (): string => {
+    const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+    if (configuredBaseUrl) {
+        return configuredBaseUrl
+    }
+
+    if (typeof window !== 'undefined') {
+        return `${window.location.protocol}//${window.location.hostname}:3000`
+    }
+
+    return 'http://localhost:3000'
+}
+
 export const API_CONFIG = {
-    BASE_URL: 'http://localhost:3000',
+    BASE_URL: resolveBaseUrl(),
     // 默认保留房间/规则 mock，仅优先打通用户系统
     USE_MOCK: true,
     userUseMock: false,
-    roomUseMock: true,
+    roomUseMock: false,
 
     endpoints: {
         user: {

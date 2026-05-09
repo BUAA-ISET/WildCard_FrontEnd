@@ -149,6 +149,11 @@ const LEGACY_CURRENT_ROOM_STORAGE_KEY = 'currentRoomCode'
 const GUEST_NAME_STORAGE_KEY = scopedStorageKey('guest-name')
 export const DEFAULT_AVATAR = defaultAvatarUrl
 
+export function getRoomEntryPath(room: Pick<Room, 'code' | 'status'>): string {
+  const encodedCode = encodeURIComponent(room.code)
+  return room.status === 'playing' ? `/game/${encodedCode}/battle` : `/game/${encodedCode}`
+}
+
 const initialMockRooms: Record<string, Room> = {
   '123456': {
     id: '1',
@@ -224,7 +229,10 @@ function getCurrentRoomCode(): string | null {
     return null
   }
 
-  return window.sessionStorage.getItem(CURRENT_ROOM_STORAGE_KEY)
+  return (
+    window.sessionStorage.getItem(CURRENT_ROOM_STORAGE_KEY)
+    || window.sessionStorage.getItem(LEGACY_CURRENT_ROOM_STORAGE_KEY)
+  )
 }
 
 function setCurrentRoomCode(code: string) {
