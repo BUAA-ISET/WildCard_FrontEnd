@@ -12,6 +12,9 @@ vi.mock('vue-router', () => ({
 }))
 
 vi.mock('../../api/room', () => ({
+  getRoomEntryPath: vi.fn((room: { code: string; status: string }) => (
+    room.status === 'playing' ? `/game/${room.code}/battle` : `/game/${room.code}`
+  )),
   roomApi: {
     getRuleOptions: vi.fn(),
     createRoom: vi.fn(),
@@ -70,7 +73,6 @@ describe('CreateRoomView', () => {
       roundTime: 30,
       password: undefined,
     })
-    expect(sessionStorage.getItem('currentRoomCode')).toBe('ROOM42')
     expect(push).toHaveBeenCalledWith('/game/ROOM42')
     expect(ElMessage.success).toHaveBeenCalledWith('Room created successfully. Code: ROOM42')
   })

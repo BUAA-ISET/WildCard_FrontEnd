@@ -8,6 +8,14 @@
         You can also use our pre-set rules.
       </div>
       <div class="action-btns">
+        <el-button
+          v-if="resumeRoomPath"
+          class="main-btn accent-btn"
+          size="large"
+          @click="resumeRoom"
+        >
+          CONTINUE ROOM
+        </el-button>
         <el-button class="main-btn" size="large" @click="$router.push('/create-room')">CREATE ROOM</el-button>
         <el-button class="main-btn" size="large" @click="$router.push('/join-room')">JOIN ROOM</el-button>
       </div>
@@ -16,7 +24,33 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { roomApi, getRoomEntryPath, type Room } from '../api/room'
 
+const router = useRouter()
+const currentRoom = ref<Room | null>(null)
+
+const resumeRoomPath = computed(() => (
+  currentRoom.value ? getRoomEntryPath(currentRoom.value) : ''
+))
+
+async function loadCurrentRoom() {
+  const result = await roomApi.getCurrentRoom()
+  currentRoom.value = result.success ? result.data || null : null
+}
+
+function resumeRoom() {
+  if (!resumeRoomPath.value) {
+    return
+  }
+
+  router.push(resumeRoomPath.value)
+}
+
+onMounted(() => {
+  void loadCurrentRoom()
+})
 </script>
 
 <style scoped>
@@ -75,6 +109,10 @@
 }
 
 .main-btn:hover {
+  background: #ece6fa;
+}
+
+.accent-btn {
   background: #ece6fa;
 }
 </style>

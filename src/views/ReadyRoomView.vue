@@ -80,10 +80,10 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
-import { roomApi, DEFAULT_AVATAR, ROOM_STORAGE_KEY, type Room } from '../api/room'
+import { roomApi, DEFAULT_AVATAR, getRoomEntryPath, type Room } from '../api/room'
 import { useUserStore } from '../stores/userStore'
 
 const route = useRoute()
@@ -94,8 +94,6 @@ const currentPlayerId = roomApi.getCurrentPlayerId()
 const room = ref<Room | null>(null)
 const actionLoading = ref(false)
 let pollingTimer: number | null = null
-let isLeavingRoom = false
-
 const currentPlayer = computed(() => room.value?.players.find((player) => player.id === currentPlayerId) || null)
 
 const emptySlots = computed(() => {
@@ -151,9 +149,11 @@ async function refreshRoom() {
     return
   }
 
-  if (room.value.status === 'playing') {
+  const expectedPath = getRoomEntryPath(room.value)
+  if (route.path !== expectedPath) {
     stopPolling()
-    await router.replace(`/game/${room.value.code}/battle`)
+    await router.replace(expectedPath)
+    return
   }
 }
 
@@ -187,14 +187,19 @@ async function startGame() {
 
   room.value = result.data
   stopPolling()
-  await router.push(`/game/${result.data.code}/battle`)
+  await router.push(getRoomEntryPath(result.data))
 }
 
 async function leaveRoom() {
-  isLeavingRoom = true
   actionLoading.value = true
-  await roomApi.leaveRoom()
+  const result = await roomApi.leaveRoom()
   actionLoading.value = false
+
+  if (!result.success) {
+    ElMessage.error('Failed to leave room')
+    return
+  }
+
   stopPolling()
   await router.replace('/')
 }
@@ -206,35 +211,15 @@ function stopPolling() {
   }
 }
 
-function handleStorageSync(event: StorageEvent) {
-  if (event.key && event.key !== ROOM_STORAGE_KEY) {
-    return
-  }
-
-  void refreshRoom()
-}
-
 onMounted(async () => {
   await refreshRoom()
   pollingTimer = window.setInterval(() => {
     void refreshRoom()
   }, 1500)
-  window.addEventListener('storage', handleStorageSync)
 })
 
 onBeforeUnmount(() => {
   stopPolling()
-  window.removeEventListener('storage', handleStorageSync)
-})
-
-onBeforeRouteLeave(async (to) => {
-  if (isLeavingRoom || to.path === `/game/${route.params.roomCode}/battle`) {
-    return true
-  }
-
-  await roomApi.leaveRoom()
-  stopPolling()
-  return true
 })
 </script>
 
