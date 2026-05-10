@@ -1,45 +1,45 @@
 <template>
   <div class="create-room-wrapper">
     <div class="create-room-center">
-      <h1 class="create-room-title">Create Room</h1>
+      <h1 class="create-room-title">创建房间</h1>
       <div class="create-room-card">
-        <div class="create-room-label">Room Settings</div>
+        <div class="create-room-label">房间设置</div>
 
         <div class="form-item">
-          <div class="form-label">Game Rules</div>
+          <div class="form-label">游戏规则</div>
           <el-select
             v-model="selectedRuleId"
-            placeholder="Select game rule"
+            placeholder="选择游戏规则"
             class="form-select"
             :loading="rulesLoading"
           >
             <el-option
               v-for="rule in ruleOptions"
               :key="rule.id"
-              :label="`${rule.name} (${rule.playerCount} players)`"
+              :label="`${rule.name}（${rule.playerCount}人）`"
               :value="rule.id"
             />
           </el-select>
         </div>
 
         <div class="form-item">
-          <div class="form-label">Round Time (seconds)</div>
-          <el-select v-model="roundTime" placeholder="Select" class="form-select">
+          <div class="form-label">回合时间（秒）</div>
+          <el-select v-model="roundTime" placeholder="请选择" class="form-select">
             <el-option v-for="t in [10, 15, 20, 30, 45, 60]" :key="t" :label="t" :value="t" />
           </el-select>
         </div>
 
         <div class="form-item">
-          <div class="form-label">Room Password (optional)</div>
+          <div class="form-label">房间密码（可选）</div>
           <el-input
             v-model="roomPassword"
-            placeholder="Enter password or leave empty"
+            placeholder="输入密码，留空则无密码"
             class="form-input"
             type="password"
           />
         </div>
 
-        <el-button class="create-room-btn" size="medium" @click="onCreateRoom">Create Room</el-button>
+        <el-button class="create-room-btn" size="medium" @click="onCreateRoom">创建房间</el-button>
       </div>
     </div>
   </div>
@@ -70,12 +70,12 @@ onMounted(async () => {
     return
   }
 
-  ElMessage.error(result.message || 'Failed to load game rules')
+  ElMessage.error(result.message || '游戏规则加载失败')
 })
 
 async function onCreateRoom() {
   if (!selectedRuleId.value) {
-    ElMessage.error('Please select a game rule')
+    ElMessage.error('请选择游戏规则')
     return
   }
 
@@ -86,10 +86,10 @@ async function onCreateRoom() {
   })
 
   if (result.success && result.data) {
-    ElMessage.success(`Room created successfully. Code: ${result.data.code}`)
+    ElMessage.success(`房间创建成功，房间号：${result.data.code}`)
     router.push(getRoomEntryPath(result.data))
   } else {
-    ElMessage.error(result.message || 'Failed to create room')
+    ElMessage.error(result.message || '创建房间失败')
   }
 }
 </script>

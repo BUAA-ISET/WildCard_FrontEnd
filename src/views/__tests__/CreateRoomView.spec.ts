@@ -74,7 +74,7 @@ describe('CreateRoomView', () => {
       password: undefined,
     })
     expect(push).toHaveBeenCalledWith('/game/ROOM42')
-    expect(ElMessage.success).toHaveBeenCalledWith('Room created successfully. Code: ROOM42')
+    expect(ElMessage.success).toHaveBeenCalledWith('房间创建成功，房间号：ROOM42')
   })
 
   it('shows a validation message when no rule is available', async () => {
@@ -91,6 +91,6 @@ describe('CreateRoomView', () => {
     await wrapper.find('button').trigger('click')
 
     expect(roomApi.createRoom).not.toHaveBeenCalled()
-    expect(ElMessage.error).toHaveBeenCalledWith('Please select a game rule')
+    expect(ElMessage.error).toHaveBeenCalledWith('请选择游戏规则')
   })
 })

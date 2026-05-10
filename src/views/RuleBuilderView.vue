@@ -6,11 +6,26 @@
         <p>{{ design.info.name }} · {{ design.info.playerCount }} 人</p>
       </div>
       <div class="header-actions">
+        <el-button @click="backToCenter">返回列表</el-button>
+        <el-button @click="openJsonImport">导入 JSON</el-button>
         <el-button @click="showJson = !showJson">{{ showJson ? '隐藏 JSON' : '显示 JSON' }}</el-button>
         <el-button type="primary" @click="saveDesign">保存草稿</el-button>
         <el-button type="success" @click="uploadCompletedRule">完成并上传规则</el-button>
       </div>
     </header>
+
+    <el-dialog v-model="showJsonImport" title="根据 JSON 生成组件模块" width="720px">
+      <el-input
+        v-model="jsonImportText"
+        type="textarea"
+        :rows="18"
+        placeholder="粘贴符合后端规则 JSON 格式的内容"
+      />
+      <template #footer>
+        <el-button @click="showJsonImport = false">取消</el-button>
+        <el-button type="primary" @click="importJsonToDesign">生成组件模块</el-button>
+      </template>
+    </el-dialog>
 
     <nav class="workspace-tabs">
       <button
@@ -126,6 +141,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import RuleComponentPalette from '../components/rule-builder/RuleComponentPalette.vue'
 import RuleFlowCanvas from '../components/rule-builder/RuleFlowCanvas.vue'
@@ -146,12 +162,16 @@ import {
   createProperty,
   createRuleObjectPool,
   exportRuleDesign,
+  importRuleDesign,
   validateRuleDesign,
 } from '../utils/ruleBuilder'
 
 type WorkspaceKey = 'structure' | 'method' | 'cardset' | 'cardsetCompare' | 'match' | 'settlement'
 
+const route = useRoute()
+const router = useRouter()
 const design = reactive(createInitialDesign())
+const draftId = ref<string | null>(null)
 const activeWorkspace = ref<WorkspaceKey>('structure')
 const activeCardsetId = ref(design.cardsets[0].id)
 const activeComparisonId = ref(design.cardsetComparisons[0]?.id || null)
@@ -159,6 +179,8 @@ const activeMethodClassName = ref<string | null>(null)
 const activeMethodId = ref<string | null>(null)
 const selectedNodeId = ref<string | null>(null)
 const showJson = ref(false)
+const showJsonImport = ref(false)
+const jsonImportText = ref('')
 const flowCanvasRef = ref<InstanceType<typeof RuleFlowCanvas> | null>(null)
 const builderMainRef = ref<HTMLElement | null>(null)
 const isFlowFullscreen = ref(false)
@@ -338,8 +360,9 @@ watch(
   },
 )
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('fullscreenchange', syncFullscreenState)
+  await loadDraftFromRoute()
 })
 
 onBeforeUnmount(() => {
@@ -722,36 +745,155 @@ const copyJson = async () => {
   ElMessage.success('JSON 已复制')
 }
 
-const submitRuleDesign = async (successMessage: string) => {
-  const hasError = validations.value.some(item => item.level === 'error')
+const openJsonImport = () => {
+  jsonImportText.value = jsonText.value
+  showJsonImport.value = true
+}
 
-  if (hasError) {
-    ElMessage.error('存在错误，请先修正后再上传')
-    showJson.value = true
+const importJsonToDesign = () => {
+  try {
+    const parsed = JSON.parse(jsonImportText.value)
+    applyDesign(importRuleDesign(parsed, {
+      name: design.info.name,
+      playerCount: design.info.playerCount,
+      description: design.info.description,
+    }))
+    showJsonImport.value = false
+    showJson.value = false
+    ElMessage.success('JSON 已生成对应组件模块')
+  } catch {
+    ElMessage.error('JSON 格式不正确，无法生成组件模块')
+  }
+}
+
+const applyDesign = (nextDesign: ReturnType<typeof createInitialDesign>) => {
+  Object.assign(design.info, nextDesign.info)
+  design.classes = nextDesign.classes
+  design.cardsets = nextDesign.cardsets
+  design.cardsetComparisons = nextDesign.cardsetComparisons
+  design.matchFlow = nextDesign.matchFlow
+  design.endFlow = nextDesign.endFlow
+  activeCardsetId.value = design.cardsets[0]?.id || ''
+  activeComparisonId.value = design.cardsetComparisons[0]?.id || null
+  activeMethodClassName.value = null
+  activeMethodId.value = null
+  selectedNodeId.value = null
+}
+
+const loadDraftFromRoute = async () => {
+  const routeDraftId = typeof route.params.draftId === 'string' ? route.params.draftId : ''
+  if (!routeDraftId) {
+    draftId.value = null
     return
   }
 
-  // 用户确认规则完成后，将前端构建器导出的运行时 JSON 发给后端解析并发布。
-  const result = await ruleApi.saveRuleDesign({
+  if (routeDraftId === 'new') {
+    draftId.value = null
+    return
+  }
+
+  const result = await ruleApi.getDraft(routeDraftId)
+  if (!result.success || !result.data) {
+    ElMessage.error(result.message || '规则草稿加载失败')
+    await router.replace('/creation-center')
+    return
+  }
+
+  draftId.value = result.data.id
+  applyDesign(importRuleDesign(result.data.design, {
+    name: result.data.name,
+    playerCount: result.data.playerCount,
+    description: result.data.description,
+  }))
+}
+
+const persistDraft = async (showError = true) => {
+  const payload = {
     name: design.info.name,
     playerCount: design.info.playerCount,
     description: design.info.description,
     design: exportedDesign.value,
-  })
-
-  if (result.success) {
-    ElMessage.success(successMessage)
-  } else {
-    ElMessage.error(result.message || '保存失败，请稍后重试')
   }
+
+  const result = draftId.value
+    ? await ruleApi.updateDraft(draftId.value, payload)
+    : await ruleApi.createDraft(payload)
+
+  if (result.success && result.data?.id) {
+    draftId.value = result.data.id
+    return result.data.id
+  }
+
+  if (showError) {
+    ElMessage.error(result.message || '规则草稿保存失败')
+  }
+  return ''
+}
+
+const validateBeforeSubmit = () => {
+  const hasError = validations.value.some(item => item.level === 'error')
+
+  if (hasError) {
+    ElMessage.error('存在错误，请先修正后再保存')
+    showJson.value = true
+    return false
+  }
+
+  return true
+}
+
+const validateBeforePublish = () => {
+  const runtimeValidations = validateRuleDesign(design, { strictRuntime: true })
+  const hasError = runtimeValidations.some(item => item.level === 'error')
+
+  if (hasError) {
+    ElMessage.error('规则流程还不能运行，请先补全错误项')
+    showJson.value = true
+    return false
+  }
+
+  return true
 }
 
 const saveDesign = async () => {
-  await submitRuleDesign('规则草稿已保存并发布，可在创建房间时选择')
+  if (!validateBeforeSubmit()) {
+    return
+  }
+
+  const savedDraftId = await persistDraft()
+  if (savedDraftId) {
+    ElMessage.success('规则草稿已保存')
+    if (!route.params.draftId || route.params.draftId === 'new') {
+      await router.replace(`/creation-center/${encodeURIComponent(savedDraftId)}`)
+    }
+  }
 }
 
 const uploadCompletedRule = async () => {
-  await submitRuleDesign('规则 JSON 已上传后端并发布，可用于创建房间')
+  if (!validateBeforeSubmit() || !validateBeforePublish()) {
+    return
+  }
+
+  if (!draftId.value) {
+    ElMessage.warning('请先保存草稿，再完成并上传规则')
+    return
+  }
+
+  const savedDraftId = await persistDraft()
+  if (!savedDraftId) {
+    return
+  }
+
+  const result = await ruleApi.publishDraft(savedDraftId)
+  if (result.success) {
+    ElMessage.success('规则已发布，可在创建房间时选择')
+  } else {
+    ElMessage.error(result.message || '规则发布失败')
+  }
+}
+
+const backToCenter = () => {
+  void router.push('/creation-center')
 }
 </script>
 

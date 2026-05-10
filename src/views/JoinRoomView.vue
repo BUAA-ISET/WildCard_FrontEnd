@@ -1,20 +1,20 @@
 <template>
   <div class="join-room-wrapper">
     <div class="join-room-center">
-      <h1 class="join-room-title">Join Room</h1>
+      <h1 class="join-room-title">加入房间</h1>
       <div class="join-room-card">
         <div class="join-room-label">{{ showPassword ? '密码' : '房间号' }}</div>
         <el-input
             v-if="!showPassword"
             v-model="roomCode"
-            placeholder="Enter room code...(123456)"
+            placeholder="输入房间号..."
             class="join-room-input"
             @keyup.enter="onRoomCodeInput"
         />
         <el-input
             v-else
             v-model="roomPassword"
-            placeholder="Enter room password...(abc123)"
+            placeholder="输入房间密码..."
             class="join-room-input"
             type="password"
             @keyup.enter="onJoin"

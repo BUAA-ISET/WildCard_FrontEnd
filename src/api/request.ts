@@ -78,7 +78,7 @@ export async function apiRequest<T = any>(
     } catch (error) {
         return {
             success: false,
-            message: error instanceof Error ? error.message : 'Network request failed'
+            message: error instanceof Error ? error.message : '网络请求失败'
         } as T
     }
 

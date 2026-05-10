@@ -101,7 +101,7 @@ export const useUserStore = defineStore('user', {
         return result
       } catch {
         this.applyUser(null)
-        return { success: false, message: 'Failed to fetch current user' }
+        return { success: false, message: '获取当前用户失败' }
       }
     },
     setUser(user: User | null) {

@@ -10,8 +10,10 @@ import ReadyRoomView from '../views/ReadyRoomView.vue'
 import UserView from '../views/UserView.vue'
 import JoinRoomView from '../views/JoinRoomView.vue'
 import CreateRoomView from '../views/CreateRoomView.vue'
+import CreationCenterView from '../views/CreationCenterView.vue'
 import RuleBuilderView from '../views/RuleBuilderView.vue'
 import { roomApi, getRoomEntryPath } from '../api/room'
+import { useUserStore } from '../stores/userStore'
 
 
 const routes: RouteRecordRaw[] = [
@@ -25,7 +27,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'rule-market',
-        component: { template: '<div>Rule Market</div>' }
+        component: { template: '<div>规则市场</div>' }
       },
       {
         path: 'card-style',
@@ -37,11 +39,19 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'creation-center',
+        component: CreationCenterView
+      },
+      {
+        path: 'creation-center/new',
+        component: RuleBuilderView
+      },
+      {
+        path: 'creation-center/:draftId',
         component: RuleBuilderView
       },
       {
         path: 'match-history',
-        component: { template: '<div>Match History</div>' }
+        component: { template: '<div>对局历史</div>' }
       },
       {
         path: 'user-info',
@@ -49,7 +59,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'admin-panel',
-        component: { template: '<div>Admin Panel</div>' }
+        component: { template: '<div>管理面板</div>' }
       },
       {
         path: 'create-room',
@@ -83,7 +93,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'help',
-        component: { template: '<div>Help</div>' }
+        component: { template: '<div>帮助中心</div>' }
       }
     ]
   }
@@ -102,6 +112,17 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  const userStore = useUserStore()
+  const publicPaths = new Set(['/user-info'])
+
+  if (!userStore.isLoggedIn && !publicPaths.has(to.path)) {
+    return { path: '/user-info' }
+  }
+
+  if (userStore.isLoggedIn && to.path === '/user-info') {
+    return true
+  }
+
   if (to.path !== '/battle') {
     return true
   }

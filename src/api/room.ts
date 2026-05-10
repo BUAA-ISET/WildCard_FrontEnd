@@ -449,7 +449,7 @@ export const roomApi = {
             return { success: false, message: 'Room does not exist.' }
           }
           if (room.password && room.password !== params.password) {
-            return { success: false, message: 'Incorrect password.' }
+            return { success: false, message: '密码错误' }
           }
           if (room.status !== 'waiting') {
             return { success: false, message: 'This room has already started.' }

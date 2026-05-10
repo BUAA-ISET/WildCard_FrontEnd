@@ -1,6 +1,10 @@
 <template>
   <div class="battle-page">
-    <div v-if="showSettlementNotice" class="settlement-banner">
+    <div
+      v-if="showSettlementNotice"
+      class="settlement-banner"
+      :class="isCurrentPlayerWinner ? 'winner' : 'loser'"
+    >
       <strong>{{ settlementTitle }}</strong>
       <span>{{ settlementMessage }}</span>
     </div>
@@ -182,38 +186,27 @@ const canSkip = computed(() => (
   && Boolean(snapshot.value?.pendingAction?.canSkip)
 ))
 
-const settlementTitle = computed(() => {
-  const winnerIds = snapshot.value?.winnerIds;
-  const currentId = currentPlayerId;
-//打印日志
-console.log('=== Settlement Title Debug ===');
-console.log('currentPlayerId:', currentId);
-console.log('winnerIds:', winnerIds);
-console.log('isWinner:', winnerIds?.includes(currentId));
-  
+const isCurrentPlayerWinner = computed(() => Boolean(snapshot.value?.winnerIds.includes(currentPlayerId)))
 
-snapshot.value?.winnerIds.includes(currentPlayerId)
-    ? 'Match finished, you win'
-    : 'Match finished, you lose'
-})
+const settlementTitle = computed(() => (
+  isCurrentPlayerWinner.value ? '对局结束，你获胜了' : '对局结束，你失败了'
+))
 
-const settlementMessage = computed(() => 'Settlement complete. Returning to the ready room...')
+const settlementMessage = computed(() => '结算完成，正在返回准备房间...')
 
 const turnText = computed(() => {
   if (!snapshot.value) {
-    return 'Waiting for the match to initialize'
+    return '等待对局初始化'
   }
   if (snapshot.value.status === 'finished') {
-    return snapshot.value.winnerIds.includes(currentPlayerId)
-      ? 'Match finished, you win'
-      : 'Match finished, you lose'
+    return isCurrentPlayerWinner.value ? '对局结束，你获胜了' : '对局结束，你失败了'
   }
   if (currentTurnPlayerId.value === currentPlayerId) {
-    return snapshot.value.lastAction?.message || 'Your turn to play'
+    return snapshot.value.lastAction?.message || '轮到你出牌'
   }
 
   const player = snapshot.value.players.find((item) => item.id === currentTurnPlayerId.value)
-  return `Current turn: ${player?.username || 'Unknown'}`
+  return `当前回合：${player?.username || '未知玩家'}`
 })
 
 const frontCardStyle = computed(() => ({
@@ -265,7 +258,7 @@ async function refreshSnapshot() {
 
   if (!result.success || !result.data) {
     stopPolling()
-    ElMessage.error(result.message || 'Failed to load the current match')
+    ElMessage.error(result.message || '当前对局加载失败')
     await router.replace(`/game/${roomCode}`)
     return
   }
@@ -307,7 +300,7 @@ async function playSelectedCards() {
     return
   }
   if (selectedCardIds.value.length === 0) {
-    ElMessage.error('Select cards before playing')
+    ElMessage.error('请先选择要出的牌')
     return
   }
 
@@ -316,7 +309,7 @@ async function playSelectedCards() {
   actionLoading.value = false
 
   if (!result.success || !result.data) {
-    ElMessage.error(result.message || 'Failed to play cards')
+    ElMessage.error(result.message || '出牌失败')
     return
   }
 
@@ -334,7 +327,7 @@ async function skipTurn() {
   actionLoading.value = false
 
   if (!result.success || !result.data) {
-    ElMessage.error(result.message || 'Failed to skip')
+    ElMessage.error(result.message || '跳过失败')
     return
   }
 
@@ -381,15 +374,27 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 18px;
-  border: 1px solid #d7c483;
-  border-radius: 10px;
-  background: linear-gradient(90deg, #fff4cc 0%, #ffe7a3 100%);
-  color: #5b4300;
+  padding: 18px 22px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  box-shadow: 0 14px 32px rgba(31, 42, 68, 0.16);
+}
+
+.settlement-banner.winner {
+  border-color: #20a35b;
+  background: linear-gradient(90deg, #e8fff1 0%, #c9f5dc 100%);
+  color: #0d5b32;
+}
+
+.settlement-banner.loser {
+  border-color: #d44747;
+  background: linear-gradient(90deg, #fff0f0 0%, #ffd6d6 100%);
+  color: #8b1d1d;
 }
 
 .settlement-banner strong {
-  font-size: 1rem;
+  font-size: 1.12rem;
+  font-weight: 800;
 }
 
 .settlement-banner span {

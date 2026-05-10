@@ -212,7 +212,7 @@ function buildLastAction(session: BackendGameSession): GameActionRecord | null {
         playerId,
         action: skipped ? 'skip' : 'playCards',
         cards,
-        message: skipped ? 'Opponent skipped' : `Played ${cards.length} card(s)`,
+        message: skipped ? '对方选择跳过' : `打出了 ${cards.length} 张牌`,
         turn: 0,
     }
 }

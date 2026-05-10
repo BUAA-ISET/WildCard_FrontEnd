@@ -95,8 +95,8 @@ describe('BattleView', () => {
     const wrapper = mount(BattleView)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Match finished, you win')
-    expect(wrapper.text()).toContain('Settlement complete. Returning to the ready room...')
+    expect(wrapper.text()).toContain('对局结束，你获胜了')
+    expect(wrapper.text()).toContain('结算完成，正在返回准备房间...')
     expect(replace).not.toHaveBeenCalled()
 
     await vi.advanceTimersByTimeAsync(1800)
@@ -150,6 +150,6 @@ describe('BattleView', () => {
     const wrapper = mount(BattleView)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Match finished, you lose')
+    expect(wrapper.text()).toContain('对局结束，你失败了')
   })
 })
