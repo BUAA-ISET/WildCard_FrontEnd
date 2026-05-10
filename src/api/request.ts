@@ -1,4 +1,5 @@
 import { getApiUrl, shouldUseMockApi } from './config'
+import { AUTH_TOKEN_STORAGE_KEY } from '../utils/storageNamespace'
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
 
@@ -12,6 +13,20 @@ interface RequestOptions {
 }
 
 const DEFAULT_MOCK_DELAY = 300
+
+function getAuthToken() {
+    if (typeof window === 'undefined') {
+        return ''
+    }
+
+    try {
+        return window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
+            || window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
+            || ''
+    } catch {
+        return ''
+    }
+}
 
 /**
  * Simplified API request function
@@ -42,22 +57,28 @@ export async function apiRequest<T = any>(
     }
 
     const url = getApiUrl(endpoint)
+    const token = getAuthToken()
+    const requestHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...headers,
+    }
+
+    if (token && endpoint !== '/api/user/register' && !requestHeaders.Authorization) {
+        requestHeaders.Authorization = `Bearer ${token}`
+    }
 
     let response: Response
     try {
         response = await fetch(url, {
             method,
             credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                ...headers,
-            },
+            headers: requestHeaders,
             body: body ? JSON.stringify(body) : undefined,
         })
     } catch (error) {
         return {
             success: false,
-            message: error instanceof Error ? error.message : 'Network request failed'
+            message: error instanceof Error ? error.message : '网络请求失败'
         } as T
     }
 

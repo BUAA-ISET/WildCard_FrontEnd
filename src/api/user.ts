@@ -1,13 +1,14 @@
 import { ref } from 'vue'
 import { apiGet, apiPost, apiPut } from './request'
 import { API_CONFIG, shouldUseMockApi, shouldUseUserMockApi } from './config'
-import { scopedStorageKey, USER_STORAGE_KEY } from '../utils/storageNamespace'
+import { AUTH_TOKEN_STORAGE_KEY, scopedStorageKey, USER_STORAGE_KEY } from '../utils/storageNamespace'
 
 export interface User {
   id: string
   username: string
   email: string
   avatar: string
+  token?: string
 }
 
 export interface LoginParams {
@@ -52,6 +53,7 @@ type BackendUser = {
   username: string
   email: string
   avatar?: string
+  token?: string
 }
 
 const VERIFICATION_CODE_TTL = 5 * 60 * 1000
@@ -149,7 +151,7 @@ const verificationCodes = new Map<string, VerificationRecord>()
 
 function loadUserFromStorage(): User | null {
   try {
-    const stored = localStorage.getItem(USER_STORAGE_KEY)
+    const stored = sessionStorage.getItem(USER_STORAGE_KEY) || localStorage.getItem(USER_STORAGE_KEY)
     if (stored) {
       return JSON.parse(stored)
     }
@@ -162,12 +164,26 @@ function loadUserFromStorage(): User | null {
 function saveUserToStorage(user: User | null): void {
   try {
     if (user) {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+      sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
     } else {
+      sessionStorage.removeItem(USER_STORAGE_KEY)
       localStorage.removeItem(USER_STORAGE_KEY)
     }
   } catch (e) {
     console.error('Failed to save user to storage:', e)
+  }
+}
+
+function saveAuthToken(token: string | null | undefined): void {
+  try {
+    if (token) {
+      sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
+    } else {
+      sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
+      localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
+    }
+  } catch (e) {
+    console.error('Failed to save auth token:', e)
   }
 }
 
@@ -176,6 +192,7 @@ const currentUser = ref<User | null>(loadUserFromStorage())
 function setCurrentUser(user: User | null) {
   currentUser.value = user
   saveUserToStorage(user)
+  saveAuthToken(user?.token)
 }
 
 function normalizeBackendUser(user: BackendUser | null | undefined): User | null {
@@ -188,6 +205,7 @@ function normalizeBackendUser(user: BackendUser | null | undefined): User | null
     username: user.username,
     email: user.email,
     avatar: user.avatar || '',
+    token: user.token,
   }
 }
 
@@ -323,6 +341,7 @@ export const userApi = {
     }).then((result: ApiResult) => {
       if (result.success) {
         setCurrentUser(null)
+        saveAuthToken(null)
       }
       return result
     })

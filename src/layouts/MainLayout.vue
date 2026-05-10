@@ -1,6 +1,6 @@
 <template>
-  <div class="main-layout" data-testid="app-shell">
-    <header class="top-header">
+  <div :class="['main-layout', { 'auth-only-layout': !isLoggedIn }]" data-testid="app-shell">
+    <header v-if="isLoggedIn" class="top-header">
       <div class="header-logo">WildCard</div>
       <div class="header-nav">
         <div class="top-nav-item" @click="handleTeamIntro">团队介绍</div>
@@ -9,7 +9,7 @@
       </div>
     </header>
     <div class="main-body">
-      <aside class="sidebar">
+      <aside v-if="isLoggedIn" class="sidebar">
         <nav class="nav">
           <router-link to="/" class="nav-item" exact-active-class="active">
             <el-icon><House /></el-icon>
@@ -22,18 +22,6 @@
           <router-link to="/user-info" class="nav-item" exact-active-class="active">
             <el-icon><User /></el-icon>
             <span>用户中心</span>
-          </router-link>
-          <router-link to="/rule-market" class="nav-item" exact-active-class="active">
-            <el-icon><Shop /></el-icon>
-            <span>规则市场</span>
-          </router-link>
-          <router-link to="/card-style" class="nav-item" exact-active-class="active">
-            <el-icon><Brush /></el-icon>
-            <span>卡牌样式</span>
-          </router-link>
-          <router-link to="/battle" class="nav-item" exact-active-class="active">
-            <el-icon><VideoPlay /></el-icon>
-            <span>对局界面</span>
           </router-link>
         </nav>
         <div class="sidebar-bottom">
@@ -64,7 +52,7 @@ import defaultAvatarUrl from '../assets/default-avatar.svg'
 
 const router = useRouter()
 const userStore = useUserStore()
-const { username, email, avatar } = storeToRefs(userStore)
+const { isLoggedIn, username, email, avatar } = storeToRefs(userStore)
 const defaultAvatar = defaultAvatarUrl;
 
 const displayAvatar = computed(() => avatar.value || defaultAvatar)
@@ -102,6 +90,17 @@ const openRouteInNewWindow = (path: string) => {
   height: 100vh;
   background: #e8e8e8;
   overflow: hidden;
+}
+
+.auth-only-layout {
+  background: #fff;
+}
+
+.auth-only-layout .main-body,
+.auth-only-layout .main-content,
+.auth-only-layout .content-area {
+  width: 100%;
+  background: #fff;
 }
 
 .top-header {

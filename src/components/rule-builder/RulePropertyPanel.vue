@@ -778,7 +778,6 @@
                 :key="cardset.id"
                 :label="cardset.name"
                 :value="cardset.id"
-                :disabled="cardset.id === getStringField('cardsetB')"
               />
             </el-select>
           </el-form-item>
@@ -794,7 +793,6 @@
                 :key="cardset.id"
                 :label="cardset.name"
                 :value="cardset.id"
-                :disabled="cardset.id === getStringField('cardsetA')"
               />
             </el-select>
           </el-form-item>
@@ -1027,7 +1025,7 @@ const propertyAccessObjectProperties = computed(() => getRuntimeObjectPropertyNa
 
 const availableComponentOptions = computed(() => {
   return props.graphNodes
-    .filter(graphNode => graphNode.id !== props.node?.id)
+    .filter(graphNode => graphNode.id !== props.node?.id && getComponentPropertyOptions(graphNode).length > 0)
     .map(graphNode => {
       const propertyCount = getComponentPropertyOptions(graphNode).length
       return {
@@ -1177,7 +1175,7 @@ const getComponentPropertyOptions = (componentNode: RuleNodeDraft | null): Compo
   }
 
   if (componentNode.data.componentType === 17) {
-    return [{ label: '牌桌', value: '牌桌' }]
+    return [{ label: '牌桌', value: '牌桌', elementClass: 'table' }]
   }
 
   if (componentNode.data.componentType === 21) {
@@ -1198,7 +1196,7 @@ const getComponentPropertyOptions = (componentNode: RuleNodeDraft | null): Compo
   }
 
   if (componentNode.data.componentType === 23) {
-    return [{ label: '玩家', value: '玩家' }]
+    return [{ label: '玩家', value: '玩家', elementClass: 'player' }]
   }
 
   if (componentNode.data.componentType === 25) {
@@ -1230,10 +1228,7 @@ const getComponentPropertyOptions = (componentNode: RuleNodeDraft | null): Compo
     ]
   }
 
-  return [
-    { label: 'type', value: 'type' },
-    { label: 'content', value: 'content' },
-  ]
+  return []
 }
 
 const selectedComponentPropertyOptions = computed(() => getComponentPropertyOptions(selectedPropertyAccessComponent.value))

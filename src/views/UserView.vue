@@ -31,6 +31,9 @@
       </div>
     </div>
     <div v-else class="auth-container">
+      <div class="auth-brand">
+        <img src="/src/assets/logo.svg" alt="Wild Card Logo" class="auth-logo" />
+      </div>
       <el-tabs v-model="authTab">
         <el-tab-pane label="登录" name="login">
           <div class="auth-form">
@@ -323,11 +326,12 @@ async function onUpdatePassword() {
 
 <style scoped>
 .user-page-wrapper {
-  min-height: 80vh;
+  min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f7f8fc;
+  background: #fff;
+  padding: 40px 20px;
 }
 
 .user-account-container {
@@ -468,9 +472,22 @@ async function onUpdatePassword() {
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-  padding: 48px 64px;
-  min-width: 400px;
+  padding: 40px 64px 48px;
+  width: min(528px, 100%);
+  min-height: 624px;
   position: relative;
+}
+
+.auth-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.auth-logo {
+  width: 220px;
+  max-width: 100%;
+  display: block;
 }
 
 .auth-form {

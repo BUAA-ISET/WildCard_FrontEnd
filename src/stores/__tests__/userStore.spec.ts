@@ -17,8 +17,10 @@ vi.mock('../../api/user', () => ({
 describe('userStore', () => {
   beforeEach(() => {
     localStorage.clear()
+    sessionStorage.clear()
     setActivePinia(createPinia())
     localStorage.clear()
+    sessionStorage.clear()
     vi.clearAllMocks()
   })
 

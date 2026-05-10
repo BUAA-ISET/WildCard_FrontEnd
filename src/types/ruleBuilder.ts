@@ -141,6 +141,10 @@ export type ExportedFlowNode = {
   content: Record<string, unknown> | null
   count?: unknown
   next?: string
+  position?: {
+    x: number
+    y: number
+  }
 }
 
 export type ExportedPropertyMap = Record<string, {

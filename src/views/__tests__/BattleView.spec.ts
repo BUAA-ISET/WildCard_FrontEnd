@@ -104,4 +104,52 @@ describe('BattleView', () => {
 
     expect(replace).toHaveBeenCalledWith('/game/TEST123')
   })
+
+  it('shows a defeat result when another player wins', async () => {
+    const { gameApi } = await import('../../api/game')
+    vi.mocked(gameApi.getCurrent).mockResolvedValueOnce({
+      success: true,
+      data: {
+        sessionId: 'game-1',
+        roomCode: 'TEST123',
+        ruleId: 'classic',
+        status: 'finished',
+        currentPlayerId: 'player-2',
+        roundTime: 60,
+        deadlineAt: null,
+        players: [
+          {
+            id: 'player-1',
+            username: 'Player1',
+            avatar: '',
+            cardCount: 3,
+            online: true,
+            finished: false,
+          },
+          {
+            id: 'player-2',
+            username: 'Player2',
+            avatar: '',
+            cardCount: 0,
+            online: true,
+            finished: true,
+          },
+        ],
+        table: {
+          playedCards: [],
+          passStreak: 0,
+          lastPlayedBy: 'player-2',
+        },
+        handCards: [],
+        pendingAction: null,
+        lastAction: null,
+        winnerIds: ['player-2'],
+      },
+    })
+
+    const wrapper = mount(BattleView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('对局结束，你失败了')
+  })
 })

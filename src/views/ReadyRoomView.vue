@@ -134,7 +134,7 @@ async function refreshRoom() {
   const result = await roomApi.getRoomByCode(roomCode)
   if (!result.success || !result.data) {
     stopPolling()
-    ElMessage.error(result.message || 'Room not found')
+    ElMessage.error(result.message || '房间不存在')
     await router.replace('/')
     return
   }
@@ -144,7 +144,7 @@ async function refreshRoom() {
 
   if (!room.value.players.some((player) => player.id === currentPlayerId)) {
     stopPolling()
-    ElMessage.error('You are no longer in this room.')
+    ElMessage.error('你已不在当前房间中')
     await router.replace('/')
     return
   }
@@ -167,7 +167,7 @@ async function toggleReady() {
   actionLoading.value = false
 
   if (!result.success || !result.data) {
-    ElMessage.error(result.message || 'Failed to update ready state')
+    ElMessage.error(result.message || '准备状态更新失败')
     return
   }
 
@@ -181,7 +181,7 @@ async function startGame() {
   actionLoading.value = false
 
   if (!result.success || !result.data) {
-    ElMessage.error(result.message || 'Unable to start the game')
+    ElMessage.error(result.message || '无法开始游戏')
     return
   }
 
@@ -196,7 +196,7 @@ async function leaveRoom() {
   actionLoading.value = false
 
   if (!result.success) {
-    ElMessage.error('Failed to leave room')
+    ElMessage.error('离开房间失败')
     return
   }
 

@@ -5,3 +5,4 @@ export function scopedStorageKey(key: string) {
 }
 
 export const USER_STORAGE_KEY = scopedStorageKey('user')
+export const AUTH_TOKEN_STORAGE_KEY = scopedStorageKey('auth-token')

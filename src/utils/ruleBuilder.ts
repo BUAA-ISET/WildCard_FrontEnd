@@ -411,6 +411,136 @@ export const createInitialDesign = (): RuleDesignDraft => ({
   endFlow: createEmptyGraph('settlement'),
 })
 
+const templateByType = new Map(
+  [...componentTemplates, ...Object.values(fixedTemplates)].map(template => [template.componentType, template]),
+)
+
+const createPropertyFromExport = (name: string, property: ExportedPropertyMap[string]): PropertyDraft => ({
+  ...createProperty(name),
+  type: property.type,
+  default: property.default,
+  config: property.config || [],
+})
+
+const resolveExportedNodePosition = (exportedNode: ExportedFlowNode, index: number) => {
+  const x = exportedNode.position?.x
+  const y = exportedNode.position?.y
+
+  if (Number.isFinite(x) && Number.isFinite(y)) {
+    return { x: Number(x), y: Number(y) }
+  }
+
+  return {
+    x: 80 + (index % 4) * 240,
+    y: 180 + Math.floor(index / 4) * 160,
+  }
+}
+
+const exportNodePosition = (node: RuleNodeDraft) => ({
+  x: node.position.x,
+  y: node.position.y,
+})
+
+const importFlowGraph = (flow: Record<string, ExportedFlowNode>, scope: FlowScope): FlowGraphDraft => {
+  const entries = Object.entries(flow).sort((left, right) => Number(left[0]) - Number(right[0]))
+  const nodes = entries.map(([ordinal, exportedNode], index) => {
+    const template = templateByType.get(exportedNode.type) || fixedTemplates[scope]
+    const position = resolveExportedNodePosition(exportedNode, index)
+    return {
+      ...createNodeFromTemplate(template, scope, position.x, position.y),
+      id: `imported-${scope}-${ordinal}`,
+      data: {
+        ...createNodeFromTemplate(template, scope, 0, 0).data,
+        fixed: ordinal === '1' && Boolean(template.fixed),
+        content: cloneContent(exportedNode.content),
+      },
+    }
+  })
+
+  const nodeByOrdinal = Object.fromEntries(entries.map(([ordinal], index) => [ordinal, nodes[index].id]))
+  const edges: RuleEdgeDraft[] = []
+
+  entries.forEach(([ordinal, exportedNode]) => {
+    const source = nodeByOrdinal[ordinal]
+    const content = exportedNode.content || {}
+    const next = exportedNode.next || (typeof content.next === 'string' ? content.next : '')
+    const nextTrue = typeof content.next_true === 'string' ? content.next_true : ''
+    const nextFalse = typeof content.next_false === 'string' ? content.next_false : ''
+
+    if (next && nodeByOrdinal[next]) {
+      edges.push({ id: createId('edge'), source, target: nodeByOrdinal[next] })
+    }
+    if (nextTrue && nodeByOrdinal[nextTrue]) {
+      edges.push({ id: createId('edge'), source, target: nodeByOrdinal[nextTrue], sourceHandle: 'true', label: '是' })
+    }
+    if (nextFalse && nodeByOrdinal[nextFalse]) {
+      edges.push({ id: createId('edge'), source, target: nodeByOrdinal[nextFalse], sourceHandle: 'false', label: '否' })
+    }
+  })
+
+  return nodes.length > 0 ? { nodes, edges } : createEmptyGraph(scope)
+}
+
+export const importRuleDesign = (
+  exported: ExportedRuleDesign,
+  info: Partial<RuleDesignDraft['info']> = {},
+): RuleDesignDraft => {
+  const initial = createInitialDesign()
+  const cardsets = Object.entries(exported.cardsets || {}).map(([id, cardset], index) => ({
+    id,
+    name: cardset.name || `牌型${index + 1}`,
+    properties: Object.entries(cardset.properties || {}).map(([name, property]) => createPropertyFromExport(name, property)),
+    successors: cardset.successors || [],
+    buildFlow: importFlowGraph(cardset.build_flow || {}, 'cardset'),
+    compareFlow: importFlowGraph(cardset.compare_flow || {}, 'cardsetCompare'),
+  }))
+  const cardsetByName = new Map(cardsets.map(cardset => [cardset.name, cardset.id]))
+
+  return {
+    info: {
+      ...initial.info,
+      ...info,
+    },
+    classes: Object.fromEntries(
+      (['player', 'card', 'table'] as const).map(className => {
+        const exportedClass = exported.classes?.[className]
+        const fallback = initial.classes[className]
+        return [
+          className,
+          {
+            ...fallback,
+            defaultProperties: Object.entries(exportedClass?.default_properties || {})
+              .map(([name, property]) => createPropertyFromExport(name, property)),
+            userProperties: Object.entries(exportedClass?.user_properties || {})
+              .map(([name, property]) => createPropertyFromExport(name, property)),
+            methods: Object.entries(exportedClass?.methods || {}).map(([name, method]) => ({
+              id: createId('method'),
+              name,
+              returns: method.returns,
+              parameters: Object.entries(method.parameters || {}).map(([parameterName, parameter]) => ({
+                id: createId('parameter'),
+                name: parameterName,
+                type: parameter.type,
+              })),
+              flow: importFlowGraph(method.flow || {}, 'method'),
+            })),
+          },
+        ]
+      }),
+    ) as RuleDesignDraft['classes'],
+    cardsets: cardsets.length > 0 ? cardsets : initial.cardsets,
+    cardsetComparisons: Object.entries(exported.cardset_comparisons || {}).map(([id, comparison], index) => ({
+      id,
+      name: `牌型比较${index + 1}`,
+      cardsetA: cardsetByName.get(comparison.cardsetA) || '',
+      cardsetB: cardsetByName.get(comparison.cardsetB) || '',
+      compareFlow: importFlowGraph(comparison.compare_flow || {}, 'cardsetCompare'),
+    })),
+    matchFlow: importFlowGraph(exported.match_flow || {}, 'match'),
+    endFlow: importFlowGraph(exported.end_flow || {}, 'settlement'),
+  }
+}
+
 const propertyToJson = (property: PropertyDraft): ExportedPropertyMap[string] => {
   const json: ExportedPropertyMap[string] = {
     type: property.type,
@@ -564,7 +694,7 @@ const getOutgoingEdges = (graph: FlowGraphDraft, nodeId: string) => {
 }
 //寻找某一节点的出边
 
-const semanticTargetHandles = ['index', 'component', 'rvalue', 'lval', 'rval', 'return']
+const semanticTargetHandles = ['index', 'component', 'rvalue', 'lval', 'rval', 'condition', 'return']
 
 const isSemanticInputEdge = (edge: RuleEdgeDraft) => {
   return semanticTargetHandles.includes(edge.targetHandle || '')
@@ -599,6 +729,7 @@ export const exportFlowGraph = (graph: FlowGraphDraft): Record<string, ExportedF
         content,
         count,
         next: nextOrdinal,
+        position: exportNodePosition(node),
       }
       return
     } else if (content && firstTarget && shouldWriteNext(node.data.componentType)) {
@@ -608,6 +739,7 @@ export const exportFlowGraph = (graph: FlowGraphDraft): Record<string, ExportedF
     result[ordinalMap[node.id]] = {
       type: node.data.componentType,
       content,
+      position: exportNodePosition(node),
     }
   })
 
@@ -641,6 +773,7 @@ const normalizeComponentReferencesForExport = (
     12: ['lval', 'rval'],
     13: ['component'],
     14: ['lval', 'rval'],
+    16: ['condition'],
     26: ['return'],
   }
 
@@ -717,7 +850,7 @@ export const exportRuleDesign = (design: RuleDesignDraft): ExportedRuleDesign =>
   end_flow: exportFlowGraph(design.endFlow),
 })
 
-const validateGraph = (graph: FlowGraphDraft, name: string): ValidationResult[] => {
+const validateGraph = (graph: FlowGraphDraft, name: string, strict = false): ValidationResult[] => {
   const results: ValidationResult[] = []
   const startNode = getStartNode(graph)
 
@@ -734,19 +867,30 @@ const validateGraph = (graph: FlowGraphDraft, name: string): ValidationResult[] 
       const hasFalse = outgoingEdges.some(edge => edge.sourceHandle === 'false')
 
       if (!hasTrue || !hasFalse) {
-        results.push({ level: 'warning', message: `${name} 的「${node.data.title}」建议连接是/否两条分支` })
+        results.push({
+          level: strict ? 'error' : 'warning',
+          message: `${name} 的「${node.data.title}」需要连接是/否两条分支`,
+        })
       }
     }
 
     if (shouldWriteNext(node.data.componentType) && node.data.componentType !== 16 && outgoingEdges.length === 0) {
-      results.push({ level: 'warning', message: `${name} 的「${node.data.title}」还没有后续节点` })
+      results.push({
+        level: strict ? 'error' : 'warning',
+        message: `${name} 的「${node.data.title}」还没有后续节点`,
+      })
     }
   })
 
   return results
 }
 
-export const validateRuleDesign = (design: RuleDesignDraft): ValidationResult[] => {
+const graphHasNodeType = (graph: FlowGraphDraft, componentTypes: number[]) => {
+  return graph.nodes.some(node => componentTypes.includes(node.data.componentType))
+}
+
+export const validateRuleDesign = (design: RuleDesignDraft, options: { strictRuntime?: boolean } = {}): ValidationResult[] => {
+  const strictRuntime = options.strictRuntime || false
   const results: ValidationResult[] = []
 
   if (!design.info.name.trim()) {
@@ -757,15 +901,33 @@ export const validateRuleDesign = (design: RuleDesignDraft): ValidationResult[] 
     results.push({ level: 'error', message: '至少需要一种牌型' })
   }
 
-  results.push(...validateGraph(design.matchFlow, '对局流程'))
-  results.push(...validateGraph(design.endFlow, '结算流程'))
+  results.push(...validateGraph(design.matchFlow, '对局流程', strictRuntime))
+  results.push(...validateGraph(design.endFlow, '结算流程', strictRuntime))
+
+  if (strictRuntime && !graphHasNodeType(design.matchFlow, [18])) {
+    results.push({ level: 'error', message: '对局流程需要连接到「结束对局」组件' })
+  }
+
+  if (strictRuntime && !graphHasNodeType(design.endFlow, [24])) {
+    results.push({ level: 'error', message: '结算流程需要包含「结算结束」组件' })
+  }
 
   design.cardsets.forEach(cardset => {
-    results.push(...validateGraph(cardset.buildFlow, `牌型「${cardset.name}」构建流程`))
+    results.push(...validateGraph(cardset.buildFlow, `牌型「${cardset.name}」构建流程`, strictRuntime))
+    if (strictRuntime && !graphHasNodeType(cardset.buildFlow, [28])) {
+      results.push({ level: 'error', message: `牌型「${cardset.name}」构建流程需要包含「匹配返回」组件` })
+    }
+
+    if (strictRuntime && cardset.compareFlow.nodes.length > 1 && !graphHasNodeType(cardset.compareFlow, [30])) {
+      results.push({ level: 'error', message: `牌型「${cardset.name}」比较流程需要包含「比较返回」组件` })
+    }
   })
 
   design.cardsetComparisons.forEach(comparison => {
-    results.push(...validateGraph(comparison.compareFlow, `牌型比较「${comparison.name}」流程`))
+    results.push(...validateGraph(comparison.compareFlow, `牌型比较「${comparison.name}」流程`, strictRuntime))
+    if (strictRuntime && !graphHasNodeType(comparison.compareFlow, [30])) {
+      results.push({ level: 'error', message: `牌型比较「${comparison.name}」流程需要包含「比较返回」组件` })
+    }
   })
 
   Object.values(design.classes).forEach(classDraft => {
@@ -780,7 +942,10 @@ export const validateRuleDesign = (design: RuleDesignDraft): ValidationResult[] 
         }
       })
 
-      results.push(...validateGraph(method.flow, `${classDraft.displayName} 方法「${method.name}」流程`))
+      results.push(...validateGraph(method.flow, `${classDraft.displayName} 方法「${method.name}」流程`, strictRuntime))
+      if (strictRuntime && method.returns && !graphHasNodeType(method.flow, [26])) {
+        results.push({ level: 'error', message: `${classDraft.displayName} 方法「${method.name}」需要包含「方法返回」组件` })
+      }
     })
   })
 

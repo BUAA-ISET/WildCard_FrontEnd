@@ -2,10 +2,10 @@
   <div class="home-wrapper">
     <div class="home-center">
       <img src="/src/assets/logo.svg" alt="Wild Card Logo" class="main-logo" />
-      <div class="subtitle">Make your own rule!</div>
+      <div class="subtitle">创造属于你的规则!</div>
       <div class="desc">
-        Unleash your imagination, design your own card game rules, and start playing!<br />
-        You can also use our pre-set rules.
+        释放你的想象力，设计出你自己的卡牌游戏规则，然后开始游戏吧！<br />
+        当然，你也可以使用我们预先设定的规则。
       </div>
       <div class="action-btns">
         <el-button
@@ -14,10 +14,10 @@
           size="large"
           @click="resumeRoom"
         >
-          CONTINUE ROOM
+          返回房间
         </el-button>
-        <el-button class="main-btn" size="large" @click="$router.push('/create-room')">CREATE ROOM</el-button>
-        <el-button class="main-btn" size="large" @click="$router.push('/join-room')">JOIN ROOM</el-button>
+        <el-button class="main-btn" size="large" @click="$router.push('/create-room')">创建房间</el-button>
+        <el-button class="main-btn" size="large" @click="$router.push('/join-room')">加入房间</el-button>
       </div>
     </div>
   </div>
