@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import { onMounted } from 'vue'
+import { useUserStore } from './stores/userStore'
+
+const userStore = useUserStore()
+
+onMounted(() => {
+  void userStore.fetchCurrentUser()
+})
 </script>
 
 <template>
-  <HelloWorld />
+  <router-view />
 </template>
