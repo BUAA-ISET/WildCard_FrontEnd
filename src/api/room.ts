@@ -21,6 +21,7 @@ export interface Room {
   ruleId: string
   ruleName: string
   password: string | null
+  hasPassword?: boolean
   players: Player[]
   status: 'waiting' | 'playing' | 'finished'
   gameSessionId?: string
@@ -75,6 +76,7 @@ type BackendRoom = Partial<Room> & {
   rule_id?: string
   rule_name?: string
   game_session_id?: string
+  has_password?: boolean
   players?: BackendPlayer[]
 }
 
@@ -209,7 +211,7 @@ function getCachedCurrentUser(): CachedCurrentUser | null {
     return null
   }
 
-  const stored = window.localStorage.getItem(USER_STORAGE_KEY)
+  const stored = window.sessionStorage.getItem(USER_STORAGE_KEY) || window.localStorage.getItem(USER_STORAGE_KEY)
   if (!stored) {
     return null
   }
@@ -326,6 +328,7 @@ function normalizeRoom(room: BackendRoom): Room {
     ruleId: String(room.ruleId ?? room.rule_id ?? ''),
     ruleName: String(room.ruleName ?? room.rule_name ?? ''),
     password: room.password ?? null,
+    hasPassword: Boolean(room.hasPassword ?? room.has_password),
     players: Array.isArray(room.players) ? room.players.map(normalizePlayer) : [],
     status: (room.status as Room['status']) || 'waiting',
     gameSessionId: room.gameSessionId ?? room.game_session_id,

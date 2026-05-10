@@ -19,21 +19,27 @@ export interface GamePlayerView {
     username: string
     avatar: string
     cardCount: number
+    publicProperties?: Record<string, number>
     online: boolean
-    finished: boolean
+    finished?: boolean
 }
 
 export interface GameTableView {
     playedCards: GameCard[]
-    passStreak: number
-    lastPlayedBy: string | null
+    passStreak?: number
+    lastPlayedBy?: string | null
+    publicProperties?: Record<string, number>
 }
 
 export interface PendingAction {
     actionId: string
     playerId: string
-    actionType: 'playCards'
+    type?: 'play_cards' | 'choose_option'
+    actionType?: 'playCards' | 'chooseOption'
+    timer?: number
+    deadlineAt?: number | null
     canSkip: boolean
+    options?: Array<{ name?: string; value: number } | Record<string, unknown>>
 }
 
 export interface GameActionRecord {
@@ -104,6 +110,16 @@ type BackendGamePlayer = {
 }
 
 type BackendGameSession = {
+    sessionId?: string
+    roomCode?: string
+    ruleId?: string
+    currentPlayerId?: string
+    roundTime?: number
+    deadlineAt?: number | null
+    handCards?: GameCard[]
+    pendingAction?: PendingAction | null
+    lastAction?: GameActionRecord | null
+    winnerIds?: string[]
     id?: string
     room_code?: string
     status?: string
@@ -291,7 +307,14 @@ async function normalizeGameResult(
         }
     }
 
-    const roomCode = roomCodeHint || String(result.data.room_code || '')
+    if (result.data.sessionId && Array.isArray(result.data.handCards)) {
+        return {
+            success: true,
+            data: result.data as unknown as GameSnapshot,
+        }
+    }
+
+    const roomCode = roomCodeHint || String(result.data.roomCode || result.data.room_code || '')
     const room = roomCode ? await loadRoomMeta(roomCode) : null
 
     return {

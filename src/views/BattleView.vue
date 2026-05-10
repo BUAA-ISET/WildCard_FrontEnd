@@ -182,9 +182,20 @@ const canSkip = computed(() => (
   && Boolean(snapshot.value?.pendingAction?.canSkip)
 ))
 
-const settlementTitle = computed(() => (
-  snapshot.value?.winnerIds.includes(currentPlayerId) ? 'Match finished, you win' : 'Match finished'
-))
+const settlementTitle = computed(() => {
+  const winnerIds = snapshot.value?.winnerIds;
+  const currentId = currentPlayerId;
+//打印日志
+console.log('=== Settlement Title Debug ===');
+console.log('currentPlayerId:', currentId);
+console.log('winnerIds:', winnerIds);
+console.log('isWinner:', winnerIds?.includes(currentId));
+  
+
+snapshot.value?.winnerIds.includes(currentPlayerId)
+    ? 'Match finished, you win'
+    : 'Match finished, you lose'
+})
 
 const settlementMessage = computed(() => 'Settlement complete. Returning to the ready room...')
 
@@ -195,7 +206,7 @@ const turnText = computed(() => {
   if (snapshot.value.status === 'finished') {
     return snapshot.value.winnerIds.includes(currentPlayerId)
       ? 'Match finished, you win'
-      : 'Match finished'
+      : 'Match finished, you lose'
   }
   if (currentTurnPlayerId.value === currentPlayerId) {
     return snapshot.value.lastAction?.message || 'Your turn to play'

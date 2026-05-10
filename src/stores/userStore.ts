@@ -9,7 +9,7 @@ type Credentials = {
 
 function loadUserFromStorage(): User | null {
   try {
-    const stored = localStorage.getItem(USER_STORAGE_KEY)
+    const stored = sessionStorage.getItem(USER_STORAGE_KEY) || localStorage.getItem(USER_STORAGE_KEY)
     if (stored) {
       return JSON.parse(stored)
     }
@@ -22,8 +22,9 @@ function loadUserFromStorage(): User | null {
 function saveUserToStorage(user: User | null): void {
   try {
     if (user) {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+      sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
     } else {
+      sessionStorage.removeItem(USER_STORAGE_KEY)
       localStorage.removeItem(USER_STORAGE_KEY)
     }
   } catch (e) {
