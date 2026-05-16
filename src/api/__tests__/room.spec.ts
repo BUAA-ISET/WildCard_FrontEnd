@@ -97,6 +97,23 @@ describe('roomApi', () => {
     })
   })
 
+  it('does not store the current room code when joining fails', async () => {
+    window.sessionStorage.setItem(scopedStorageKey('current-room-code'), 'OLD01')
+    window.sessionStorage.setItem('currentRoomCode', 'OLD01')
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: '密码错误' }), { status: 403 }),
+    )
+
+    await expect(roomApi.joinRoom({ code: 'room01', password: 'wrong' })).resolves.toEqual({
+      success: false,
+      data: undefined,
+      message: '密码错误',
+    })
+
+    expect(window.sessionStorage.getItem(scopedStorageKey('current-room-code'))).toBe('OLD01')
+    expect(window.sessionStorage.getItem('currentRoomCode')).toBe('OLD01')
+  })
+
   it('clears current room storage when leaving succeeds', async () => {
     window.sessionStorage.setItem(scopedStorageKey('current-room-code'), 'ROOM01')
     window.sessionStorage.setItem('currentRoomCode', 'ROOM01')
