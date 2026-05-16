@@ -98,6 +98,49 @@ describe('userApi', () => {
     expect(window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toBe('new-token')
   })
 
+  it('does not store user or token data when login fails', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: '邮箱或密码错误' }), { status: 401 }),
+    )
+
+    await expect(userApi.login({ email: 'alice@example.com', password: 'wrong' })).resolves.toEqual({
+      success: false,
+      message: '邮箱或密码错误',
+    })
+
+    expect(window.sessionStorage.getItem(USER_STORAGE_KEY)).toBeNull()
+    expect(window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toBeNull()
+  })
+
+  it('does not overwrite cached user data when registration fails', async () => {
+    window.sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify({
+      id: 'cached-user',
+      username: 'cached',
+      email: 'cached@example.com',
+      avatar: '',
+    }))
+    window.sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, 'cached-token')
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ message: '验证码错误' }), { status: 422 }),
+    )
+
+    await expect(userApi.register({
+      email: 'new@example.com',
+      username: 'new-user',
+      password: 'password123',
+      verificationCode: '000000',
+    })).resolves.toEqual({
+      success: false,
+      message: '验证码错误',
+    })
+
+    expect(JSON.parse(window.sessionStorage.getItem(USER_STORAGE_KEY) || '{}')).toMatchObject({
+      id: 'cached-user',
+      username: 'cached',
+    })
+    expect(window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toBe('cached-token')
+  })
+
   it('does not overwrite the cached user when current user lookup fails', async () => {
     window.sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify({
       id: 'cached-user',
