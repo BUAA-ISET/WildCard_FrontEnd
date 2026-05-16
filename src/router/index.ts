@@ -114,6 +114,9 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const userStore = useUserStore()
   const publicPaths = new Set(['/user-info'])
+  if (import.meta.env.VITE_ENABLE_TEST_SANDBOX === 'true') {
+    publicPaths.add('/__test__/room-sandbox')
+  }
 
   if (!userStore.isLoggedIn && !publicPaths.has(to.path)) {
     return { path: '/user-info' }
