@@ -67,7 +67,7 @@ export const useUserStore = defineStore('user', {
       const trimmedPassword = password.trim()
 
       if (!trimmedEmail || !trimmedPassword) {
-        return { success: false, message: '请输入邮箱和密码' }
+        return { success: false, message: '请输入邮箱或用户名以及密码' }
       }
 
       const result = await userApi.login({
