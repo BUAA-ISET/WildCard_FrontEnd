@@ -48,14 +48,13 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
-import defaultAvatarUrl from '../assets/default-avatar.svg'
+import { resolveAvatarUrl } from '../utils/avatar'
 
 const router = useRouter()
 const userStore = useUserStore()
 const { isLoggedIn, username, email, avatar } = storeToRefs(userStore)
-const defaultAvatar = defaultAvatarUrl;
 
-const displayAvatar = computed(() => avatar.value || defaultAvatar)
+const displayAvatar = computed(() => resolveAvatarUrl(avatar.value))
 const displayUsername = computed(() => username.value || '未登录')
 const displayEmail = computed(() => email.value || 'not logged in')
 
