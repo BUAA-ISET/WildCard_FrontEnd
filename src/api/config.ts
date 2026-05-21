@@ -25,6 +25,8 @@ export const API_CONFIG = {
             login: '/api/user/login',
             register: '/api/user/register',
             sendVerificationCode: '/api/user/send-code',
+            passwordResetCode: '/api/user/password-reset-code',
+            passwordReset: '/api/user/password-reset',
             logout: '/api/user/logout',
             current: '/api/user/current',
             updateUsername: '/api/user/username',
