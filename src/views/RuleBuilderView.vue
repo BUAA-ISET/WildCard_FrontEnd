@@ -7,6 +7,7 @@
       </div>
       <div class="header-actions">
         <el-button @click="backToCenter">返回列表</el-button>
+        <el-button @click="openTutorial">教程</el-button>
         <el-button @click="openJsonImport">导入 JSON</el-button>
         <el-button @click="showJson = !showJson">{{ showJson ? '隐藏 JSON' : '显示 JSON' }}</el-button>
         <el-button type="primary" @click="saveDesign">保存草稿</el-button>
@@ -894,6 +895,11 @@ const uploadCompletedRule = async () => {
 
 const backToCenter = () => {
   void router.push('/creation-center')
+}
+
+const TUTORIAL_URL = 'https://buaa-iset.github.io/WildCard_Docs/tutorials/rule-builder-overview/'
+const openTutorial = () => {
+  window.open(TUTORIAL_URL, '_blank', 'noopener')
 }
 </script>
 
