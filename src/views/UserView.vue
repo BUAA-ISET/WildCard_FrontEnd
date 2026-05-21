@@ -424,6 +424,19 @@ async function onUpdatePassword() {
   width: 100%;
 }
 
+.setting-input :deep(.el-input__inner) {
+  line-height: 1.6;
+  height: auto;
+  padding-block: 4px;
+  font-family: system-ui, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-text-fill-color: currentColor;
+}
+
+.setting-input :deep(.el-input__inner:-webkit-autofill) {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  -webkit-text-fill-color: currentColor;
+}
+
 .inline-field {
   display: flex;
   gap: 12px;
