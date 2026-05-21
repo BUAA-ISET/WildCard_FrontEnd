@@ -3,10 +3,22 @@
     <div v-if="isLoggedIn" class="user-account-container">
       <div class="profile-block">
         <div class="profile-content">
-          <img :src="user.avatar || defaultAvatar" class="avatar-img" />
+          <img :src="avatarUrl" class="avatar-img" />
           <div class="profile-meta">
             <div class="user-name">{{ user.username }}</div>
             <div class="user-email">{{ user.email }}</div>
+            <div class="avatar-actions">
+              <input
+                ref="avatarFileInput"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                class="avatar-file-input"
+                @change="onAvatarFileChange"
+              />
+              <el-button size="small" :loading="isUploadingAvatar" @click="onPickAvatar">
+                {{ isUploadingAvatar ? '上传中…' : '修改头像' }}
+              </el-button>
+            </div>
           </div>
         </div>
       </div>
@@ -114,10 +126,9 @@ import { ElMessage } from 'element-plus'
 import { shouldUseUserMockApi } from '../api/config'
 import { userApi } from '../api/user'
 import { useUserStore } from '../stores/userStore'
-import defaultAvatarUrl from '../assets/default-avatar.svg'
+import { resolveAvatarUrl } from '../utils/avatar'
 
 
-const defaultAvatar = defaultAvatarUrl;
 const SEND_CODE_COOLDOWN = 60
 const isMockApi = shouldUseUserMockApi()
 
@@ -157,6 +168,10 @@ const emailForm = reactive({
 })
 const emailCountdown = ref(0)
 let emailCountdownTimer: ReturnType<typeof setInterval> | null = null
+
+const avatarFileInput = ref<HTMLInputElement | null>(null)
+const isUploadingAvatar = ref(false)
+const avatarUrl = computed(() => resolveAvatarUrl(avatar.value))
 
 const isSendingCode = ref(false)
 const verificationCountdown = ref(0)
@@ -403,6 +418,33 @@ async function onUpdateEmail() {
     ElMessage.error(result.message || '邮箱修改失败')
   }
 }
+
+function onPickAvatar() {
+  avatarFileInput.value?.click()
+}
+
+async function onAvatarFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  if (file.size > 2 * 1024 * 1024) {
+    ElMessage.error('头像不能超过 2MB')
+    target.value = ''
+    return
+  }
+  isUploadingAvatar.value = true
+  try {
+    const result = await userStore.uploadAvatar(file)
+    if (result.success) {
+      ElMessage.success('头像已更新')
+    } else {
+      ElMessage.error(result.message || '上传失败')
+    }
+  } finally {
+    isUploadingAvatar.value = false
+    target.value = ''
+  }
+}
 </script>
 
 <style scoped>
@@ -455,6 +497,17 @@ async function onUpdateEmail() {
   border-radius: 50%;
   background: #f0f0f0;
   margin-bottom: 18px;
+  object-fit: cover;
+}
+
+.avatar-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.avatar-file-input {
+  display: none;
 }
 
 .user-name {

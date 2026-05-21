@@ -126,6 +126,13 @@ export const useUserStore = defineStore('user', {
 
       return result
     },
+    async uploadAvatar(file: File) {
+      const result = await userApi.uploadAvatar(file)
+      if (result.success && result.data) {
+        this.applyUser(result.data)
+      }
+      return result
+    },
     async logout() {
       await userApi.logout()
       this.applyUser(null)

@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { apiGet, apiPost, apiPut } from './request'
-import { API_CONFIG, shouldUseMockApi, shouldUseUserMockApi } from './config'
+import { API_CONFIG, getApiUrl, shouldUseMockApi, shouldUseUserMockApi } from './config'
 import { AUTH_TOKEN_STORAGE_KEY, scopedStorageKey, USER_STORAGE_KEY } from '../utils/storageNamespace'
 
 export interface User {
@@ -484,5 +484,64 @@ export const userApi = {
         return { success: true, data: currentUser.value }
       },
     })
+  },
+
+  async uploadAvatar(file: File): Promise<ApiResult<User>> {
+    if (shouldUseUserMockApi()) {
+      if (!currentUser.value) {
+        return { success: false, message: '未登录' }
+      }
+      const reader = new FileReader()
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(file)
+      })
+      currentUser.value = { ...currentUser.value, avatar: dataUrl }
+      saveUserToStorage(currentUser.value)
+      return { success: true, data: currentUser.value }
+    }
+
+    const form = new FormData()
+    form.append('file', file)
+    const url = getApiUrl(API_CONFIG.endpoints.user.updateAvatar)
+    const token = (() => {
+      if (typeof window === 'undefined') return ''
+      try {
+        return (
+          window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ||
+          window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ||
+          ''
+        )
+      } catch {
+        return ''
+      }
+    })()
+    const headers: Record<string, string> = {}
+    if (token) headers.Authorization = `Bearer ${token}`
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: form,
+      })
+      const text = await response.text()
+      const result = text ? JSON.parse(text) : {}
+      if (!response.ok) {
+        return {
+          success: false,
+          message:
+            (result as { message?: string }).message ||
+            `Request failed with status ${response.status}`,
+        }
+      }
+      return result as ApiResult<User>
+    } catch (e) {
+      return {
+        success: false,
+        message: e instanceof Error ? e.message : '网络请求失败',
+      }
+    }
   },
 }
