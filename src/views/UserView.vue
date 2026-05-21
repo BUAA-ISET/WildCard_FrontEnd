@@ -74,6 +74,9 @@
               <el-input v-model="loginForm.password" type="password" class="setting-input" show-password />
             </div>
             <el-button class="user-btn" size="medium" @click="onLogin">登录</el-button>
+            <div class="auth-link-row">
+              <a class="auth-link" @click="authTab = 'reset'">忘记密码?</a>
+            </div>
           </div>
         </el-tab-pane>
         <el-tab-pane label="注册" name="register">
@@ -112,6 +115,40 @@
               <el-input v-model="registerForm.confirm" type="password" class="setting-input" show-password />
             </div>
             <el-button class="user-btn" size="medium" @click="onRegister">注册</el-button>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="找回密码" name="reset">
+          <div class="auth-form">
+            <div class="auth-field">
+              <div class="setting-label">注册邮箱</div>
+              <div class="inline-field">
+                <el-input
+                  v-model="resetForm.email"
+                  placeholder="example@mail.com"
+                  class="setting-input compact-input"
+                />
+                <el-button
+                  class="send-code-btn"
+                  :disabled="resetCountdown > 0"
+                  @click="onSendResetCode"
+                >
+                  {{ resetCountdown > 0 ? `${resetCountdown}s` : '发送验证码' }}
+                </el-button>
+              </div>
+            </div>
+            <div class="auth-field">
+              <div class="setting-label">验证码</div>
+              <el-input v-model="resetForm.verificationCode" class="setting-input" />
+            </div>
+            <div class="auth-field">
+              <div class="setting-label">新密码</div>
+              <el-input v-model="resetForm.newPassword" type="password" class="setting-input" show-password />
+            </div>
+            <div class="auth-field">
+              <div class="setting-label">确认新密码</div>
+              <el-input v-model="resetForm.confirm" type="password" class="setting-input" show-password />
+            </div>
+            <el-button class="user-btn" size="medium" @click="onResetPassword">重置密码</el-button>
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -168,6 +205,15 @@ const emailForm = reactive({
 })
 const emailCountdown = ref(0)
 let emailCountdownTimer: ReturnType<typeof setInterval> | null = null
+
+const resetForm = reactive({
+  email: '',
+  verificationCode: '',
+  newPassword: '',
+  confirm: '',
+})
+const resetCountdown = ref(0)
+let resetCountdownTimer: ReturnType<typeof setInterval> | null = null
 
 const avatarFileInput = ref<HTMLInputElement | null>(null)
 const isUploadingAvatar = ref(false)
@@ -445,6 +491,73 @@ async function onAvatarFileChange(event: Event) {
     target.value = ''
   }
 }
+
+function startResetCountdown() {
+  resetCountdown.value = SEND_CODE_COOLDOWN
+  if (resetCountdownTimer) {
+    clearInterval(resetCountdownTimer)
+  }
+  resetCountdownTimer = setInterval(() => {
+    if (resetCountdown.value <= 1) {
+      resetCountdown.value = 0
+      if (resetCountdownTimer) {
+        clearInterval(resetCountdownTimer)
+        resetCountdownTimer = null
+      }
+    } else {
+      resetCountdown.value -= 1
+    }
+  }, 1000)
+}
+
+async function onSendResetCode() {
+  const target = resetForm.email.trim()
+  if (!target) {
+    ElMessage.error('请先填写注册邮箱')
+    return
+  }
+  const result = await userApi.sendPasswordResetCode({ email: target })
+  if (result.success) {
+    if (result.debugCode) {
+      resetForm.verificationCode = result.debugCode
+    }
+    startResetCountdown()
+    ElMessage.success(result.message || '验证码已发送')
+  } else {
+    ElMessage.error(result.message || '发送失败')
+  }
+}
+
+async function onResetPassword() {
+  if (!resetForm.email.trim() || !resetForm.verificationCode.trim() || !resetForm.newPassword) {
+    ElMessage.error('请填写完整字段')
+    return
+  }
+  if (resetForm.newPassword !== resetForm.confirm) {
+    ElMessage.error('两次输入的新密码不一致')
+    return
+  }
+  const result = await userApi.resetPassword({
+    email: resetForm.email.trim(),
+    verificationCode: resetForm.verificationCode.trim(),
+    newPassword: resetForm.newPassword,
+  })
+  if (result.success) {
+    resetForm.email = ''
+    resetForm.verificationCode = ''
+    resetForm.newPassword = ''
+    resetForm.confirm = ''
+    resetCountdown.value = 0
+    if (resetCountdownTimer) {
+      clearInterval(resetCountdownTimer)
+      resetCountdownTimer = null
+    }
+    ElMessage.success(result.message || '密码已重置,请用新密码登录')
+    authTab.value = 'login'
+  } else {
+    ElMessage.error(result.message || '重置失败')
+  }
+}
 </script>
 
 <style scoped>
@@ -661,6 +774,22 @@ async function onAvatarFileChange(event: Event) {
 .user-btn:hover,
 .send-code-btn:hover {
   background: #ece6fa;
+}
+
+.auth-link-row {
+  margin-top: 8px;
+  text-align: right;
+}
+
+.auth-link {
+  color: #6b46c1;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+.auth-link:hover {
+  color: #4c1d95;
 }
 
 :deep(.el-tabs__header) {

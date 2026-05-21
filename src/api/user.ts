@@ -38,6 +38,12 @@ export interface SendVerificationCodeParams {
   email: string
 }
 
+export interface PasswordResetParams {
+  email: string
+  verificationCode: string
+  newPassword: string
+}
+
 type MockAccount = User & {
   password: string
 }
@@ -543,5 +549,52 @@ export const userApi = {
         message: e instanceof Error ? e.message : '网络请求失败',
       }
     }
+  },
+
+  async sendPasswordResetCode(params: SendVerificationCodeParams): Promise<ApiResult> {
+    return apiPost(API_CONFIG.endpoints.user.passwordResetCode, params, {
+      useMock: shouldUseUserMockApi(),
+      mockDelay: 300,
+      mockFn: () => {
+        const email = normalizeEmail(params.email)
+        if (!email) {
+          return { success: false, message: '请输入邮箱' }
+        }
+        if (!mockAccounts.has(email)) {
+          return { success: false, message: '该邮箱未注册' }
+        }
+        const code = Math.floor(100000 + Math.random() * 900000).toString()
+        const record: VerificationRecord = {
+          code,
+          expiresAt: Date.now() + VERIFICATION_CODE_TTL,
+        }
+        verificationCodes.set(email, record)
+        return { success: true, message: '验证码已生成', debugCode: code }
+      },
+    })
+  },
+
+  async resetPassword(params: PasswordResetParams): Promise<ApiResult> {
+    return apiPost(API_CONFIG.endpoints.user.passwordReset, params, {
+      useMock: shouldUseUserMockApi(),
+      mockDelay: 300,
+      mockFn: () => {
+        const email = normalizeEmail(params.email)
+        if (!email || !params.verificationCode.trim() || !params.newPassword) {
+          return { success: false, message: '请填写完整' }
+        }
+        const account = mockAccounts.get(email)
+        if (!account) {
+          return { success: false, message: '该邮箱未注册' }
+        }
+        const verificationResult = validateVerificationCode(email, params.verificationCode)
+        if (!verificationResult.success) {
+          return verificationResult
+        }
+        account.password = params.newPassword
+        saveMockAccountsToStorage()
+        return { success: true, message: '密码已重置' }
+      },
+    })
   },
 }
