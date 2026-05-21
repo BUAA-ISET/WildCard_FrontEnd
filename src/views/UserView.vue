@@ -38,8 +38,8 @@
         <el-tab-pane label="登录" name="login">
           <div class="auth-form">
             <div class="auth-field">
-              <div class="setting-label">邮箱</div>
-              <el-input v-model="loginForm.email" placeholder="example@mail.com" class="setting-input" />
+              <div class="setting-label">邮箱 / 用户名</div>
+              <el-input v-model="loginForm.email" placeholder="邮箱或用户名" class="setting-input" />
             </div>
             <div class="auth-field">
               <div class="setting-label">密码</div>
@@ -192,7 +192,7 @@ async function onLogin() {
   const password = loginForm.password.trim()
 
   if (!emailValue || !password) {
-    ElMessage.error('请输入邮箱和密码')
+    ElMessage.error('请输入邮箱或用户名以及密码')
     return
   }
 

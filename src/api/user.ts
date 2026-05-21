@@ -12,6 +12,7 @@ export interface User {
 }
 
 export interface LoginParams {
+  // accepts either an email (contains '@') or a username; field name kept for backend wire compatibility
   email: string
   password: string
 }
