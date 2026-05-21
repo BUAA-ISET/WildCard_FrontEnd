@@ -29,6 +29,11 @@ export interface UpdatePasswordParams {
   newPassword: string
 }
 
+export interface UpdateEmailParams {
+  newEmail: string
+  verificationCode: string
+}
+
 export interface SendVerificationCodeParams {
   email: string
 }
@@ -440,6 +445,43 @@ export const userApi = {
         account.password = params.newPassword
         saveMockAccountsToStorage()
         return { success: true, message: '密码更新成功' }
+      },
+    })
+  },
+
+  async updateEmail(params: UpdateEmailParams): Promise<ApiResult<User>> {
+    return apiPut(API_CONFIG.endpoints.user.updateEmail, params, {
+      useMock: shouldUseUserMockApi(),
+      mockDelay: 300,
+      mockFn: () => {
+        const newEmail = normalizeEmail(params.newEmail)
+        if (!newEmail || !params.verificationCode.trim()) {
+          return { success: false, message: '请填写新邮箱和验证码' }
+        }
+        if (!currentUser.value) {
+          return { success: false, message: '未登录' }
+        }
+        if (currentUser.value.email === newEmail) {
+          return { success: false, message: '新邮箱与当前邮箱相同' }
+        }
+        const verificationResult = validateVerificationCode(newEmail, params.verificationCode)
+        if (!verificationResult.success) {
+          return verificationResult
+        }
+        if (mockAccounts.has(newEmail)) {
+          return { success: false, message: '该邮箱已被占用' }
+        }
+        const oldEmail = currentUser.value.email
+        const account = mockAccounts.get(oldEmail)
+        if (account) {
+          mockAccounts.delete(oldEmail)
+          account.email = newEmail
+          mockAccounts.set(newEmail, account)
+          saveMockAccountsToStorage()
+        }
+        currentUser.value = { ...currentUser.value, email: newEmail }
+        saveUserToStorage(currentUser.value)
+        return { success: true, data: currentUser.value }
       },
     })
   },

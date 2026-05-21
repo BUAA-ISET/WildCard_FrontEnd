@@ -29,6 +29,7 @@ export const API_CONFIG = {
             current: '/api/user/current',
             updateUsername: '/api/user/username',
             updatePassword: '/api/user/password',
+            updateEmail: '/api/user/email',
             updateAvatar: '/api/user/avatar',
         },
         room: {

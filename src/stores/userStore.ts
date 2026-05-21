@@ -107,6 +107,25 @@ export const useUserStore = defineStore('user', {
     setUser(user: User | null) {
       this.applyUser(user)
     },
+    async updateEmail({ newEmail, verificationCode }: { newEmail: string; verificationCode: string }) {
+      const trimmedEmail = newEmail.trim()
+      const trimmedCode = verificationCode.trim()
+
+      if (!trimmedEmail || !trimmedCode) {
+        return { success: false, message: '请填写新邮箱和验证码' }
+      }
+
+      const result = await userApi.updateEmail({
+        newEmail: trimmedEmail,
+        verificationCode: trimmedCode,
+      })
+
+      if (result.success && result.data) {
+        this.applyUser(result.data)
+      }
+
+      return result
+    },
     async logout() {
       await userApi.logout()
       this.applyUser(null)

@@ -25,6 +25,22 @@
           <el-input v-model="passwordForm.confirm" type="password" class="setting-input" />
           <el-button class="user-btn" size="medium" @click="onUpdatePassword">修改密码</el-button>
         </div>
+        <div class="setting-section">
+          <div class="setting-label">新邮箱</div>
+          <el-input v-model="emailForm.newEmail" placeholder="example@mail.com" class="setting-input" />
+          <div class="setting-label">邮箱验证码</div>
+          <div class="inline-field">
+            <el-input v-model="emailForm.verificationCode" class="setting-input compact-input" />
+            <el-button
+              class="send-code-btn"
+              :disabled="emailCountdown > 0"
+              @click="onSendEmailChangeCode"
+            >
+              {{ emailCountdown > 0 ? `${emailCountdown}s` : '发送验证码' }}
+            </el-button>
+          </div>
+          <el-button class="user-btn" size="medium" @click="onUpdateEmail">修改邮箱</el-button>
+        </div>
         <div class="logout-section">
           <el-button type="danger" class="logout-btn" size="medium" @click="onLogout">退出登录</el-button>
         </div>
@@ -135,6 +151,12 @@ const registerForm = reactive({
   password: '',
   confirm: '',
 })
+const emailForm = reactive({
+  newEmail: '',
+  verificationCode: '',
+})
+const emailCountdown = ref(0)
+let emailCountdownTimer: ReturnType<typeof setInterval> | null = null
 
 const isSendingCode = ref(false)
 const verificationCountdown = ref(0)
@@ -320,6 +342,65 @@ async function onUpdatePassword() {
     ElMessage.success(result.message || '密码已更新')
   } else {
     ElMessage.error(result.message || '更新失败')
+  }
+}
+
+function startEmailCountdown() {
+  emailCountdown.value = SEND_CODE_COOLDOWN
+  if (emailCountdownTimer) {
+    clearInterval(emailCountdownTimer)
+  }
+  emailCountdownTimer = setInterval(() => {
+    if (emailCountdown.value <= 1) {
+      emailCountdown.value = 0
+      if (emailCountdownTimer) {
+        clearInterval(emailCountdownTimer)
+        emailCountdownTimer = null
+      }
+    } else {
+      emailCountdown.value -= 1
+    }
+  }, 1000)
+}
+
+async function onSendEmailChangeCode() {
+  const target = emailForm.newEmail.trim()
+  if (!target) {
+    ElMessage.error('请先填写新邮箱')
+    return
+  }
+  const result = await userApi.sendVerificationCode({ email: target })
+  if (result.success) {
+    if (result.debugCode) {
+      emailForm.verificationCode = result.debugCode
+    }
+    startEmailCountdown()
+    ElMessage.success(result.message || '验证码已发送')
+  } else {
+    ElMessage.error(result.message || '发送失败')
+  }
+}
+
+async function onUpdateEmail() {
+  if (!emailForm.newEmail.trim() || !emailForm.verificationCode.trim()) {
+    ElMessage.error('请填写新邮箱和验证码')
+    return
+  }
+  const result = await userStore.updateEmail({
+    newEmail: emailForm.newEmail.trim(),
+    verificationCode: emailForm.verificationCode.trim(),
+  })
+  if (result.success) {
+    emailForm.newEmail = ''
+    emailForm.verificationCode = ''
+    emailCountdown.value = 0
+    if (emailCountdownTimer) {
+      clearInterval(emailCountdownTimer)
+      emailCountdownTimer = null
+    }
+    ElMessage.success(result.message || '邮箱已更新')
+  } else {
+    ElMessage.error(result.message || '邮箱修改失败')
   }
 }
 </script>
