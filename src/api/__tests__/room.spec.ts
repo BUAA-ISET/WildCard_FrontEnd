@@ -144,4 +144,36 @@ describe('roomApi', () => {
     expect(getRoomEntryPath({ code: 'ROOM 01', status: 'playing' })).toBe('/game/ROOM%2001/battle')
     expect(getRoomEntryPath({ code: 'ROOM 01', status: 'waiting' })).toBe('/game/ROOM%2001')
   })
+
+  it('clears current room storage when no active backend room exists', async () => {
+    window.sessionStorage.setItem(scopedStorageKey('current-room-code'), 'ROOM01')
+    window.sessionStorage.setItem('currentRoomCode', 'ROOM01')
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ success: true, data: null })),
+    )
+
+    await expect(roomApi.getCurrentRoom()).resolves.toEqual({ success: true, data: null })
+
+    expect(window.sessionStorage.getItem(scopedStorageKey('current-room-code'))).toBeNull()
+    expect(window.sessionStorage.getItem('currentRoomCode')).toBeNull()
+  })
+
+  it('requests room rules with encoded room ids and returns rule data', async () => {
+    const roomRule = {
+      room_id: 'room 01',
+      rule: { name: 'Tiny Demo', player_count: 2 },
+    }
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ success: true, data: roomRule })),
+    )
+
+    await expect(roomApi.getRoomRule('room 01')).resolves.toEqual({
+      success: true,
+      data: roomRule,
+    })
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/room/rule/get?room_id=room%2001'),
+      expect.objectContaining({ method: 'GET' }),
+    )
+  })
 })

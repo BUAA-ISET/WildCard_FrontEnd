@@ -26,4 +26,40 @@ describe('用户认证页面', () => {
     cy.location('pathname').should('eq', '/user-info')
     cy.contains('.el-tabs__item.is-active', '登录').should('be.visible')
   })
+
+  it('登录成功后展示账户资料', () => {
+    cy.intercept('POST', '**/api/user/login', {
+      success: true,
+      data: {
+        id: 'user-001',
+        username: 'alice',
+        email: 'alice@example.com',
+        avatar: '',
+        token: 'jwt-token',
+      },
+    }).as('login')
+
+    cy.get('input').eq(0).type('alice@example.com')
+    cy.get('input').eq(1).type('password123')
+    cy.contains('button', '登录').click()
+    cy.wait('@login')
+
+    cy.contains('.user-name', 'alice').should('be.visible')
+    cy.contains('.user-email', 'alice@example.com').should('be.visible')
+    cy.window().then((win) => {
+      const sessionKeys = Array.from({ length: win.sessionStorage.length }, (_value, index) => win.sessionStorage.key(index))
+        .filter((key): key is string => Boolean(key))
+      const userKey = sessionKeys.find((key) => key.endsWith(':user'))
+      const tokenKey = sessionKeys.find((key) => key.endsWith(':auth-token'))
+
+      expect(userKey).to.be.a('string')
+      expect(JSON.parse(win.sessionStorage.getItem(userKey || '') || '{}')).to.include({
+        id: 'user-001',
+        username: 'alice',
+        email: 'alice@example.com',
+      })
+      expect(tokenKey).to.be.a('string')
+      expect(win.sessionStorage.getItem(tokenKey || '')).to.eq('jwt-token')
+    })
+  })
 })
