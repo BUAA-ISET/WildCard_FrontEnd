@@ -12,6 +12,10 @@ import JoinRoomView from '../views/JoinRoomView.vue'
 import CreateRoomView from '../views/CreateRoomView.vue'
 import CreationCenterView from '../views/CreationCenterView.vue'
 import RuleBuilderView from '../views/RuleBuilderView.vue'
+import RuleMarketHomeView from '../views/RuleMarketHomeView.vue'
+import RuleMarketDetailView from '../views/RuleMarketDetailView.vue'
+import RuleDeveloperDetailView from '../views/RuleDeveloperDetailView.vue'
+import RuleRoomSearchView from '../views/RuleRoomSearchView.vue'
 import { roomApi, getRoomEntryPath } from '../api/room'
 import { useUserStore } from '../stores/userStore'
 
@@ -27,7 +31,19 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'rule-market',
-        component: { template: '<div>规则市场</div>' }
+        component: RuleMarketHomeView
+      },
+      {
+        path: 'rule-market/developer/:developerId',
+        component: RuleDeveloperDetailView
+      },
+      {
+        path: 'rule-market/:ruleId/rooms',
+        component: RuleRoomSearchView
+      },
+      {
+        path: 'rule-market/:ruleId',
+        component: RuleMarketDetailView
       },
       {
         path: 'card-style',
