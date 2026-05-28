@@ -19,6 +19,10 @@
             <el-icon><EditPen /></el-icon>
             <span>创作中心</span>
           </router-link>
+          <router-link to="/rule-market" class="nav-item" exact-active-class="active">
+            <el-icon><Shop /></el-icon>
+            <span>规则市场</span>
+          </router-link>
           <router-link to="/user-info" class="nav-item" exact-active-class="active">
             <el-icon><User /></el-icon>
             <span>用户中心</span>

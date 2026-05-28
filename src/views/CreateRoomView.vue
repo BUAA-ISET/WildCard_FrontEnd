@@ -47,11 +47,12 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { roomApi, getRoomEntryPath } from '../api/room'
 import type { GameRuleOption } from '../api/room'
 
+const route = useRoute()
 const router = useRouter()
 const roundTime = ref(30)
 const roomPassword = ref('')
@@ -66,12 +67,36 @@ onMounted(async () => {
 
   if (result.success && result.data && result.data.length > 0) {
     ruleOptions.value = result.data
-    selectedRuleId.value = result.data[0].id
+    applyRouteRuleSelection(result.data)
     return
   }
 
   ElMessage.error(result.message || '游戏规则加载失败')
 })
+
+function applyRouteRuleSelection(options: GameRuleOption[]) {
+  const routeRuleId = typeof route.query.ruleId === 'string' ? route.query.ruleId : ''
+  const routeRuleName = typeof route.query.ruleName === 'string' ? route.query.ruleName : '市场规则'
+
+  if (!routeRuleId) {
+    selectedRuleId.value = options[0]?.id || ''
+    return
+  }
+
+  if (!options.some((rule) => rule.id === routeRuleId)) {
+    ruleOptions.value = [
+      {
+        id: routeRuleId,
+        name: routeRuleName,
+        playerCount: 2,
+        description: '从规则市场快速使用的规则',
+      },
+      ...options,
+    ]
+  }
+
+  selectedRuleId.value = routeRuleId
+}
 
 async function onCreateRoom() {
   if (!selectedRuleId.value) {

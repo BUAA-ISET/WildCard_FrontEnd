@@ -1,10 +1,12 @@
 export { userApi } from './user'
 export { ruleApi } from './rule'
+export { marketApi } from './market'
 export { roomApi } from './room'
 export { gameApi } from './game'
 export { API_CONFIG, getApiUrl } from './config'
 export { apiRequest, apiGet, apiPost, apiPut, apiDelete } from './request'
 
 export type { User, LoginParams, RegisterParams, UpdatePasswordParams } from './user'
+export type { PublishedRuleSummary, PublishedRuleDetail, MarketDeveloper, RuleReview, RuleRoom } from './market'
 export type { Room, Player, CreateRoomParams, JoinRoomParams, GameRuleOption } from './room'
 export type { GameSnapshot, GameCard, GamePlayerView, GameTableView } from './game'
