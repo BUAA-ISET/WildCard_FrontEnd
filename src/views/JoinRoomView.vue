@@ -29,15 +29,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { roomApi, getRoomEntryPath } from '../api/room'
 
+const route = useRoute()
 const router = useRouter()
 const roomCode = ref('')
 const roomPassword = ref('')
 const showPassword = ref(false)
+
+onMounted(() => {
+    const queryCode = typeof route.query.code === 'string' ? route.query.code : ''
+    if (queryCode) {
+        roomCode.value = queryCode
+    }
+})
 
 async function onRoomCodeInput() {
     if (!roomCode.value) {

@@ -9,6 +9,7 @@ const push = vi.fn()
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push }),
+  useRoute: () => ({ query: {}, params: {}, path: '/join-room', name: 'join-room', fullPath: '/join-room' }),
 }))
 
 vi.mock('../../api/room', () => ({
