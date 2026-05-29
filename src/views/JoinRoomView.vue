@@ -11,14 +11,17 @@
             class="join-room-input"
             @keyup.enter="onRoomCodeInput"
         />
-        <el-input
-            v-else
-            v-model="roomPassword"
-            placeholder="输入房间密码..."
-            class="join-room-input"
-            type="password"
-            @keyup.enter="onJoin"
-        />
+        <template v-else>
+          <div class="visibility-hint">该房间为<span class="visibility-tag private">私密</span>房间，需要输入密码</div>
+          <el-input
+              v-model="roomPassword"
+              placeholder="输入房间密码..."
+              class="join-room-input"
+              type="password"
+              show-password
+              @keyup.enter="onJoin"
+          />
+        </template>
         <el-button class="join-room-btn" size="medium" @click="showPassword ? onJoin() : onRoomCodeInput()">加入房间</el-button>
       </div>
     </div>
@@ -56,6 +59,7 @@ async function onRoomCodeInput() {
 async function joinRoomWithoutPassword() {
     const result = await roomApi.joinRoom({ code: roomCode.value })
     if (result.success && result.data) {
+        ElMessage.success('已加入公开房间')
         router.push(getRoomEntryPath(result.data))
     } else {
         ElMessage.error(result.message || '加入房间失败')
@@ -141,6 +145,31 @@ async function onJoin() {
 
 .join-room-btn:hover {
   background: #ece6fa;
+}
+
+.visibility-hint {
+    font-size: 0.95rem;
+    color: #555;
+    margin-bottom: 14px;
+    text-align: left;
+}
+
+.visibility-tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    margin: 0 6px;
+    font-weight: 500;
+}
+
+.visibility-tag.private {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.visibility-tag.public {
+    background: #f0fdf4;
+    color: #15803d;
 }
 
 </style>

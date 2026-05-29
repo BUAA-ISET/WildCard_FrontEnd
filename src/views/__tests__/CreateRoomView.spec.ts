@@ -74,7 +74,7 @@ describe('CreateRoomView', () => {
       password: undefined,
     })
     expect(push).toHaveBeenCalledWith('/game/ROOM42')
-    expect(ElMessage.success).toHaveBeenCalledWith('房间创建成功，房间号：ROOM42')
+    expect(ElMessage.success).toHaveBeenCalledWith('公开房间创建成功，房间号：ROOM42')
   })
 
   it('shows a validation message when no rule is available', async () => {
