@@ -30,12 +30,24 @@
         </div>
 
         <div class="form-item">
-          <div class="form-label">房间密码（可选）</div>
+          <div class="form-label">房间可见性</div>
+          <el-radio-group v-model="visibility" class="visibility-group">
+            <el-radio value="public">公开</el-radio>
+            <el-radio value="private">私密</el-radio>
+          </el-radio-group>
+          <div class="form-hint">
+            {{ visibility === 'public' ? '任何人凭房间号都能加入' : '需要正确房间密码才能加入' }}
+          </div>
+        </div>
+
+        <div class="form-item" v-if="visibility === 'private'">
+          <div class="form-label">房间密码</div>
           <el-input
             v-model="roomPassword"
-            placeholder="输入密码，留空则无密码"
+            placeholder="请输入密码"
             class="form-input"
             type="password"
+            show-password
           />
         </div>
 
@@ -54,6 +66,7 @@ import type { GameRuleOption } from '../api/room'
 
 const router = useRouter()
 const roundTime = ref(30)
+const visibility = ref<'public' | 'private'>('public')
 const roomPassword = ref('')
 const ruleOptions = ref<GameRuleOption[]>([])
 const selectedRuleId = ref('')
@@ -79,14 +92,20 @@ async function onCreateRoom() {
     return
   }
 
+  if (visibility.value === 'private' && !roomPassword.value.trim()) {
+    ElMessage.error('私密房间必须设置密码')
+    return
+  }
+
   const result = await roomApi.createRoom({
     ruleId: selectedRuleId.value,
     roundTime: roundTime.value,
-    password: roomPassword.value || undefined,
+    password: visibility.value === 'private' ? roomPassword.value.trim() : undefined,
   })
 
   if (result.success && result.data) {
-    ElMessage.success(`房间创建成功，房间号：${result.data.code}`)
+    const visibilityLabel = result.data.hasPassword ? '私密' : '公开'
+    ElMessage.success(`${visibilityLabel}房间创建成功，房间号：${result.data.code}`)
     router.push(getRoomEntryPath(result.data))
   } else {
     ElMessage.error(result.message || '创建房间失败')
@@ -154,6 +173,17 @@ async function onCreateRoom() {
 
 .form-input {
     width: 100%;
+}
+
+.visibility-group {
+    display: flex;
+    gap: 24px;
+}
+
+.form-hint {
+    font-size: 0.85rem;
+    color: #8a8aa0;
+    margin-top: 8px;
 }
 
 .create-room-btn {
