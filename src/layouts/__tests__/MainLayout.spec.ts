@@ -53,7 +53,7 @@ describe('MainLayout', () => {
       expect(wrapper.text()).toContain('首页')
       expect(wrapper.text()).toContain('创作中心')
       expect(wrapper.text()).toContain('用户中心')
-      expect(wrapper.text()).not.toContain('规则市场')
+      expect(wrapper.text()).toContain('规则市场')
       expect(wrapper.text()).not.toContain('卡牌样式')
       expect(wrapper.text()).not.toContain('对局界面')
     })
