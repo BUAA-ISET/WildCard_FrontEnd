@@ -42,6 +42,7 @@ describe('MainLayout', () => {
             House: true,
             EditPen: true,
             User: true,
+            Clock: true,
             Shop: true,
             Brush: true,
             VideoPlay: true,
@@ -52,6 +53,7 @@ describe('MainLayout', () => {
       expect(wrapper.text()).toContain('WildCard')
       expect(wrapper.text()).toContain('首页')
       expect(wrapper.text()).toContain('创作中心')
+      expect(wrapper.text()).toContain('历史对局')
       expect(wrapper.text()).toContain('用户中心')
       expect(wrapper.text()).not.toContain('规则市场')
       expect(wrapper.text()).not.toContain('卡牌样式')
@@ -70,6 +72,7 @@ describe('MainLayout', () => {
             House: true,
             EditPen: true,
             User: true,
+            Clock: true,
             Shop: true,
             Brush: true,
             VideoPlay: true,
@@ -92,6 +95,7 @@ describe('MainLayout', () => {
             House: true,
             EditPen: true,
             User: true,
+            Clock: true,
             Shop: true,
             Brush: true,
             VideoPlay: true,
@@ -124,6 +128,7 @@ describe('MainLayout', () => {
             House: true,
             EditPen: true,
             User: true,
+            Clock: true,
             Shop: true,
             Brush: true,
             VideoPlay: true,
@@ -153,6 +158,7 @@ describe('MainLayout', () => {
             House: true,
             EditPen: true,
             User: true,
+            Clock: true,
             Shop: true,
             Brush: true,
             VideoPlay: true,
@@ -182,6 +188,7 @@ describe('MainLayout', () => {
             House: true,
             EditPen: true,
             User: true,
+            Clock: true,
             Shop: true,
             Brush: true,
             VideoPlay: true,
@@ -219,6 +226,7 @@ describe('MainLayout', () => {
             House: true,
             EditPen: true,
             User: true,
+            Clock: true,
             Shop: true,
             Brush: true,
             VideoPlay: true,

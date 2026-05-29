@@ -12,6 +12,8 @@ import JoinRoomView from '../views/JoinRoomView.vue'
 import CreateRoomView from '../views/CreateRoomView.vue'
 import CreationCenterView from '../views/CreationCenterView.vue'
 import RuleBuilderView from '../views/RuleBuilderView.vue'
+import MatchHistoryView from '../views/MatchHistoryView.vue'
+import ReplayView from '../views/ReplayView.vue'
 import { roomApi, getRoomEntryPath } from '../api/room'
 import { useUserStore } from '../stores/userStore'
 
@@ -51,7 +53,11 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'match-history',
-        component: { template: '<div>对局历史</div>' }
+        component: MatchHistoryView
+      },
+      {
+        path: 'match-history/:replayId',
+        component: ReplayView
       },
       {
         path: 'user-info',
