@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from './request'
-import { shouldUseMarketMockApi } from './config'
+import { getApiUrl, shouldUseMarketMockApi } from './config'
+import { AUTH_TOKEN_STORAGE_KEY } from '../utils/storageNamespace'
 import defaultAvatarUrl from '../assets/default-avatar.svg'
 import wildcardLogoUrl from '../assets/logo.svg'
 
@@ -259,5 +260,54 @@ export const marketApi = {
         }),
       },
     )
+  },
+
+  /**
+   * 把图片 multipart 上传到 BE，拿到一个短 URL（/static/review-images/<uuid>.<ext>）
+   * 再用这个 URL 作为 createReview 的 imageUrl 字段。
+   * 之前的实现是把图片 base64 dataURL 直接塞进 imageUrl，会撞 DB 的 VARCHAR(512) 限制。
+   */
+  async uploadReviewImage(file: File): Promise<ApiResult<{ imageUrl: string }>> {
+    if (useMarketMock) {
+      // mock 模式回退为 dataURL，仅供本地预览。
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(file)
+      })
+      return { success: true, data: { imageUrl: dataUrl } }
+    }
+
+    const form = new FormData()
+    form.append('file', file)
+    const url = getApiUrl('/api/rules/reviews/images')
+    const token =
+      (typeof window !== 'undefined' &&
+        (window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ||
+          window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY))) ||
+      ''
+    const headers: Record<string, string> = {}
+    if (token) headers.Authorization = `Bearer ${token}`
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: form,
+      })
+      const text = await response.text()
+      const result = text ? JSON.parse(text) : {}
+      if (!response.ok) {
+        return {
+          success: false,
+          message: result?.message || `上传失败 (HTTP ${response.status})`,
+        }
+      }
+      return result
+    } catch (err) {
+      console.warn('[marketApi.uploadReviewImage] request failed', err)
+      return { success: false, message: '图片上传失败，请稍后重试' }
+    }
   },
 }
