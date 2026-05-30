@@ -324,7 +324,7 @@ defineExpose({
 
 .canvas-toolbar p {
   margin: 0;
-  color: #737c8d;
+  color: #3a4050;
   font-size: 13px;
 }
 
