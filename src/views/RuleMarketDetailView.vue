@@ -14,7 +14,7 @@
           </div>
         </div>
         <button type="button" class="developer-card" @click="openDeveloper">
-          <img :src="rule.developer.avatar" :alt="rule.developer.name">
+          <img :src="resolveDeveloperAvatar(rule.developer)" :alt="rule.developer.name">
           <strong>{{ rule.developer.name }}</strong>
         </button>
       </header>
@@ -80,7 +80,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
-import { marketApi, type PublishedRuleDetail } from '../api/market'
+import { marketApi, resolveDeveloperAvatar, type PublishedRuleDetail } from '../api/market'
 
 const route = useRoute()
 const router = useRouter()
