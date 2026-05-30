@@ -93,6 +93,7 @@ const reviewRating = ref(5)
 const reviewContent = ref('')
 const reviewImageUrl = ref('')
 const reviewImageName = ref('')
+const reviewImageFile = ref<File | null>(null)
 const { forkRule } = useRuleFork()
 
 function handleFork() {
@@ -155,10 +156,23 @@ async function submitReview() {
   }
 
   submitting.value = true
+
+  // 先上传图片（如果有），再带短 URL 发评论。
+  let uploadedImageUrl: string | undefined
+  if (reviewImageFile.value) {
+    const upload = await marketApi.uploadReviewImage(reviewImageFile.value)
+    if (!upload.success || !upload.data) {
+      submitting.value = false
+      ElMessage.error(upload.message || '图片上传失败')
+      return
+    }
+    uploadedImageUrl = upload.data.imageUrl
+  }
+
   const result = await marketApi.postRuleReview(rule.value.id, {
     rating: reviewRating.value,
     content: reviewContent.value.trim(),
-    imageUrl: reviewImageUrl.value.trim() || undefined,
+    imageUrl: uploadedImageUrl,
   })
   submitting.value = false
 
@@ -184,10 +198,12 @@ function handleImageChange(file: UploadFile) {
     return
   }
 
+  // 保留原 File 给提交时上传；同时读 dataURL 仅用于本地预览。
+  reviewImageFile.value = rawFile
+  reviewImageName.value = rawFile.name
   const reader = new FileReader()
   reader.onload = () => {
     reviewImageUrl.value = typeof reader.result === 'string' ? reader.result : ''
-    reviewImageName.value = rawFile.name
   }
   reader.readAsDataURL(rawFile)
 }
@@ -195,6 +211,7 @@ function handleImageChange(file: UploadFile) {
 function clearReviewImage() {
   reviewImageUrl.value = ''
   reviewImageName.value = ''
+  reviewImageFile.value = null
 }
 
 onMounted(() => {
