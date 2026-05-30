@@ -24,20 +24,15 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 const handleTeamIntro = () => {
-  openRouteInNewWindow('/teaminfo/about');
+  void router.push('/teaminfo/about');
 };
 
 const handleContact = () => {
-  openRouteInNewWindow('/teaminfo/contact');
+  void router.push('/teaminfo/contact');
 };
 
 const handleHelp = () => {
-  openRouteInNewWindow('/teaminfo/help');
-};
-
-const openRouteInNewWindow = (path: string) => {
-  const routeUrl = router.resolve(path).href;
-  window.open(routeUrl, '_blank', 'noopener,noreferrer');
+  void router.push('/teaminfo/help');
 };
 </script>
 
