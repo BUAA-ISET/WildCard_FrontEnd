@@ -132,7 +132,7 @@ onMounted(() => {
 
 .room-header p {
   margin-top: 6px;
-  color: #687083;
+  color: #4a5063;
 }
 
 .panel {
@@ -167,7 +167,7 @@ onMounted(() => {
 
 .room-card p {
   margin-top: 6px;
-  color: #687083;
+  color: #4a5063;
 }
 
 .room-info-grid {
@@ -186,7 +186,7 @@ onMounted(() => {
 .room-info-item span {
   display: block;
   margin-bottom: 6px;
-  color: #687083;
+  color: #4a5063;
   font-size: 14px;
 }
 
@@ -224,7 +224,7 @@ onMounted(() => {
 .market-btn.is-disabled:hover {
   border-color: #c8c8c8;
   background: #f5f5f5;
-  color: #999;
+  color: #666;
 }
 
 @media (max-width: 760px) {

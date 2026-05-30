@@ -164,7 +164,7 @@ onMounted(() => {
 
 .market-header p {
   margin-top: 6px;
-  color: #687083;
+  color: #4a5063;
 }
 
 .filter-panel {
@@ -232,7 +232,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   background: #eef1f7;
-  color: #4f5665;
+  color: #3a4050;
   font-weight: 700;
 }
 
@@ -268,7 +268,7 @@ onMounted(() => {
 
 .rule-card-body p {
   min-height: 44px;
-  color: #687083;
+  color: #4a5063;
   line-height: 1.55;
 }
 
@@ -281,7 +281,7 @@ onMounted(() => {
 
 .card-footer {
   flex-wrap: wrap;
-  color: #687083;
+  color: #4a5063;
   font-size: 13px;
 }
 

@@ -151,7 +151,7 @@ const QUICK_LINKS = [
 
 .help-header p {
   margin: 0;
-  color: #687083;
+  color: #4a5063;
   font-size: 15px;
 }
 
@@ -175,7 +175,7 @@ const QUICK_LINKS = [
   margin: 0 0 16px;
   font-size: 14px;
   line-height: 1.65;
-  color: #515770;
+  color: #3a4050;
 }
 
 .docs-hero-link {
@@ -224,7 +224,7 @@ const QUICK_LINKS = [
 
 .docs-quick-link-desc {
   font-size: 12.5px;
-  color: #687083;
+  color: #4a5063;
   line-height: 1.5;
 }
 
@@ -263,7 +263,7 @@ const QUICK_LINKS = [
   margin: 0;
   font-size: 14.5px;
   line-height: 1.65;
-  color: #515770;
+  color: #3a4050;
 }
 
 .faq-item a {

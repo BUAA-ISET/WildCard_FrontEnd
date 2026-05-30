@@ -132,7 +132,7 @@ onMounted(() => {
 
 .developer-header p {
   margin-top: 6px;
-  color: #687083;
+  color: #4a5063;
 }
 
 .search-panel {
@@ -174,7 +174,7 @@ onMounted(() => {
 
 .rule-row p {
   margin-top: 6px;
-  color: #687083;
+  color: #4a5063;
   line-height: 1.55;
 }
 
@@ -182,7 +182,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #687083;
+  color: #4a5063;
   font-size: 13px;
 }
 

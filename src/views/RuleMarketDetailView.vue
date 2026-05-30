@@ -262,7 +262,7 @@ onMounted(() => {
 
 .rating-line {
   margin-top: 8px;
-  color: #687083;
+  color: #4a5063;
 }
 
 .developer-card {
@@ -312,7 +312,7 @@ onMounted(() => {
   height: 100%;
   min-height: 320px;
   background: #eef1f7;
-  color: #4f5665;
+  color: #3a4050;
   font-size: 28px;
   font-weight: 700;
 }
@@ -330,7 +330,7 @@ onMounted(() => {
 }
 
 .intro-panel p {
-  color: #687083;
+  color: #4a5063;
   line-height: 1.8;
   margin-bottom: 20px;
 }
@@ -350,7 +350,7 @@ onMounted(() => {
 }
 
 .upload-name {
-  color: #687083;
+  color: #4a5063;
   font-size: 14px;
 }
 
@@ -405,7 +405,7 @@ onMounted(() => {
 }
 
 .review-meta {
-  color: #687083;
+  color: #4a5063;
   font-size: 13px;
 }
 
@@ -416,7 +416,7 @@ onMounted(() => {
 
 .review-item p {
   margin-top: 8px;
-  color: #3c4351;
+  color: #2a3040;
   line-height: 1.65;
 }
 
