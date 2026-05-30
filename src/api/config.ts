@@ -31,6 +31,7 @@ export const API_CONFIG = {
     userUseMock: false,
     roomUseMock: false,
     gameUseMock: false,
+    marketUseMock: false,
 
     endpoints: {
         user: {
@@ -69,4 +70,5 @@ export const shouldUseMockApi = (): boolean => API_CONFIG.USE_MOCK
 export const shouldUseUserMockApi = (): boolean => API_CONFIG.userUseMock ?? API_CONFIG.USE_MOCK
 export const shouldUseRoomMockApi = (): boolean => API_CONFIG.roomUseMock ?? API_CONFIG.USE_MOCK
 export const shouldUseGameMockApi = (): boolean => API_CONFIG.gameUseMock ?? API_CONFIG.USE_MOCK
+export const shouldUseMarketMockApi = (): boolean => API_CONFIG.marketUseMock ?? API_CONFIG.USE_MOCK
 

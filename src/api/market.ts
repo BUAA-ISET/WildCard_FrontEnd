@@ -1,4 +1,5 @@
 import { apiGet, apiPost } from './request'
+import { shouldUseMarketMockApi } from './config'
 import defaultAvatarUrl from '../assets/default-avatar.svg'
 
 export interface MarketDeveloper {
@@ -63,7 +64,7 @@ interface ReviewPayload {
   imageUrl?: string
 }
 
-const useMarketMock = import.meta.env.VITE_RULE_MARKET_USE_MOCK !== 'false'
+const useMarketMock = shouldUseMarketMockApi()
 
 const mockDeveloper: MarketDeveloper = {
   id: 'dev-demo',
