@@ -381,4 +381,71 @@ describe('userStore', () => {
       expect(store.avatar).toBe('')
     })
   })
+
+  describe('role 与 isAdmin', () => {
+    it('未登录时 role 默认为 user，isAdmin 为 false', () => {
+      const store = useUserStore()
+      expect(store.role).toBe('user')
+      expect(store.isAdmin).toBe(false)
+    })
+
+    it('applyUser 写入新 role，并影响 isAdmin', () => {
+      const store = useUserStore()
+      store.applyUser({
+        id: '1',
+        username: 'admin',
+        email: 'admin@test.com',
+        avatar: '',
+        role: 'admin',
+      })
+      expect(store.role).toBe('admin')
+      expect(store.isAdmin).toBe(true)
+    })
+
+    it('未携带 role 的用户回退为 user', () => {
+      const store = useUserStore()
+      store.applyUser({
+        id: '2',
+        username: 'normal',
+        email: 'normal@test.com',
+        avatar: '',
+      })
+      expect(store.role).toBe('user')
+      expect(store.isAdmin).toBe(false)
+    })
+
+    it('applyUser(null) 把 role 重置为 user', () => {
+      const store = useUserStore()
+      store.applyUser({
+        id: '1',
+        username: 'admin',
+        email: 'admin@test.com',
+        avatar: '',
+        role: 'admin',
+      })
+      expect(store.isAdmin).toBe(true)
+      store.applyUser(null)
+      expect(store.role).toBe('user')
+      expect(store.isAdmin).toBe(false)
+    })
+
+    it('fetchCurrentUser 把 BE 返回的 role 透传到 store', async () => {
+      vi.mocked(userApi.getCurrentUser).mockResolvedValue({
+        success: true,
+        data: {
+          id: '9',
+          username: 'auditor',
+          email: 'auditor@test.com',
+          avatar: '',
+          role: 'admin',
+        },
+      })
+
+      const store = useUserStore()
+      await store.fetchCurrentUser()
+
+      expect(store.role).toBe('admin')
+      expect(store.isAdmin).toBe(true)
+    })
+  })
 })

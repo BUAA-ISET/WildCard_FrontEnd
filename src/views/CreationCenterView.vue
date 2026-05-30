@@ -55,10 +55,19 @@
         <div>
           <strong>{{ rule.name || '未命名规则' }}</strong>
           <p>{{ rule.description || '暂无规则说明' }}</p>
+          <p
+            v-if="rule.status === 'rejected' && rule.rejectReason"
+            class="reject-reason"
+          >
+            驳回原因：{{ rule.rejectReason }}
+          </p>
         </div>
         <div class="rule-meta">
           <span>{{ rule.playerCount }} 人</span>
-          <span :class="['status-pill', rule.status]">{{ rule.status === 'published' ? '已发布' : '草稿' }}</span>
+          <span
+            :class="['status-pill', rule.status]"
+            :title="rule.status === 'rejected' && rule.rejectReason ? `驳回原因：${rule.rejectReason}` : undefined"
+          >{{ statusLabel(rule.status) }}</span>
           <span>{{ formatTime(rule.updatedAt) }}</span>
           <button
             type="button"
@@ -78,7 +87,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ruleApi, type RuleDraftSummary } from '../api/rule'
+import { ruleApi, type RuleDraftStatus, type RuleDraftSummary } from '../api/rule'
 
 const router = useRouter()
 const loading = ref(false)
@@ -89,6 +98,18 @@ const selectedRuleIds = ref<Set<string>>(new Set())
 const selectedCount = computed(() => selectedRuleIds.value.size)
 const allSelected = computed(() => rules.value.length > 0 && selectedRuleIds.value.size === rules.value.length)
 const someSelected = computed(() => selectedRuleIds.value.size > 0 && selectedRuleIds.value.size < rules.value.length)
+
+const STATUS_LABELS: Record<RuleDraftStatus, string> = {
+  draft: '草稿',
+  pendingReview: '审核中',
+  published: '已发布',
+  rejected: '已驳回',
+}
+
+function statusLabel(status: RuleDraftStatus | string | undefined) {
+  if (!status) return '草稿'
+  return STATUS_LABELS[status as RuleDraftStatus] ?? status
+}
 
 function formatTime(timestamp: number) {
   return new Date(timestamp).toLocaleString('zh-CN', {
@@ -346,9 +367,31 @@ onMounted(() => {
   color: #3a4050;
 }
 
+.status-pill.draft {
+  background: #eef1f7;
+  color: #3a4050;
+}
+
+.status-pill.pendingReview {
+  background: #e6f0ff;
+  color: #1a5fbf;
+}
+
 .status-pill.published {
   background: #e8f7ef;
   color: #16713a;
+}
+
+.status-pill.rejected {
+  background: #fdecec;
+  color: #b42323;
+  cursor: help;
+}
+
+.reject-reason {
+  margin: 6px 0 0;
+  color: #b42323;
+  font-size: 13px;
 }
 
 .delete-action {

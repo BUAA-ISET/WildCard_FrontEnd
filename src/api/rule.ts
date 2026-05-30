@@ -10,20 +10,29 @@ interface SaveRuleDesignParams {
   design: ExportedRuleDesign
 }
 
+export type RuleDraftStatus = 'draft' | 'pendingReview' | 'published' | 'rejected'
+
 export interface RuleDraftSummary {
   id: string
   name: string
   playerCount: number
   description: string
-  status: 'draft' | 'published'
+  status: RuleDraftStatus
   updatedAt: number
   publishedRuleId?: string
+  rejectReason?: string
 }
 
 export interface RuleDraftDetail extends RuleDraftSummary {
   ownerId?: string
   design: ExportedRuleDesign
   createdAt: number
+}
+
+export interface SubmitReviewResponse {
+  id: string
+  status: string
+  updatedAt: number
 }
 
 interface ApiResult<T = unknown> {
@@ -61,6 +70,21 @@ export const ruleApi = {
     )
   },
 
+  /**
+   * 作者提交草稿进入审核流。BE 接管发布动作，由审核员决定是否上架。
+   */
+  async submitReview(draftId: string): Promise<ApiResult<SubmitReviewResponse>> {
+    return apiPost<ApiResult<SubmitReviewResponse>>(
+      `/api/rules/drafts/${encodeURIComponent(draftId)}/submit-review`,
+      {},
+      { useMock: false },
+    )
+  },
+
+  /**
+   * @deprecated 旧的"直接发布"路径，BE 内部已转发到 submit-review。
+   * 新代码请使用 {@link ruleApi.submitReview}。
+   */
   async publishDraft(draftId: string): Promise<ApiResult<{ ruleId: string; version: number }>> {
     return apiPost<ApiResult<{ ruleId: string; version: number }>>(
       `/api/rules/drafts/${encodeURIComponent(draftId)}/publish`,
@@ -76,24 +100,29 @@ export const ruleApi = {
     )
   },
 
-  async saveRuleDesign(params: SaveRuleDesignParams): Promise<ApiResult<{ draftId: string; ruleId: string }>> {
+  /**
+   * 一站式：保存草稿并提交审核。原先此方法直接发布（绕过审核），现已改为提交审核。
+   * 成功后的 `ruleId` 字段在审核未通过前可能为空字符串，调用方应据 status 判断。
+   */
+  async saveRuleDesign(params: SaveRuleDesignParams): Promise<ApiResult<{ draftId: string; ruleId: string; status: string }>> {
     const draftResult = await this.createDraft(params)
 
     if (!draftResult.success || !draftResult.data?.id) {
       return { success: false, message: draftResult.message || '规则草稿保存失败' }
     }
 
-    const publishResult = await this.publishDraft(draftResult.data.id)
+    const submitResult = await this.submitReview(draftResult.data.id)
 
-    if (!publishResult.success || !publishResult.data?.ruleId) {
-      return { success: false, message: publishResult.message || '规则发布失败' }
+    if (!submitResult.success || !submitResult.data) {
+      return { success: false, message: submitResult.message || '规则提交审核失败' }
     }
 
     return {
       success: true,
       data: {
         draftId: draftResult.data.id,
-        ruleId: publishResult.data.ruleId,
+        ruleId: '',
+        status: submitResult.data.status,
       },
     }
   },
