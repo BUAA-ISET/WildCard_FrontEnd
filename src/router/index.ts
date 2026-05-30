@@ -4,6 +4,7 @@ import InfoLayout from '../layouts/InfoLayout.vue'
 import HomeView from '../views/HomeView.vue'
 import About from '../views/About.vue'
 import Contact from '../views/Contact.vue'
+import HelpView from '../views/HelpView.vue'
 import CardStyleView from '../views/CardStyleView.vue'
 import BattleView from '../views/BattleView.vue'
 import ReadyRoomView from '../views/ReadyRoomView.vue'
@@ -109,7 +110,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'help',
-        component: { template: '<div>帮助中心</div>' }
+        component: HelpView
       }
     ]
   }
