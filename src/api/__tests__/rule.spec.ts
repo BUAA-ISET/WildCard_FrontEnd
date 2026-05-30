@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, afterAll } from 'vitest'
 import { apiPost } from '../request'
 import { ruleApi } from '../rule'
 
@@ -7,6 +7,10 @@ vi.mock('../request', () => ({
   apiPost: vi.fn(),
   apiPut: vi.fn(),
   apiDelete: vi.fn(),
+}))
+
+vi.mock('../config', () => ({
+  getApiUrl: (endpoint: string) => `http://test${endpoint}`,
 }))
 
 describe('ruleApi.submitReview', () => {
@@ -72,5 +76,50 @@ describe('ruleApi.saveRuleDesign', () => {
     expect(secondCallUrl).not.toContain('/publish')
     expect(result.success).toBe(true)
     expect(result.data?.status).toBe('pendingReview')
+  })
+})
+
+describe('ruleApi.uploadRuleImage', () => {
+  const fetchMock = vi.fn()
+  const originalFetch = globalThis.fetch
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    fetchMock.mockReset()
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+  })
+
+  afterAll(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  it('multipart POST 到 /api/rules/drafts/{id}/images，并对 draftId 做编码', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      text: async () => JSON.stringify({ success: true, data: { imageUrl: '/static/rule-images/xyz.png' } }),
+    })
+    const file = new File(['x'], 'cover.png', { type: 'image/png' })
+
+    const result = await ruleApi.uploadRuleImage('draft id/1', file)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('http://test/api/rules/drafts/draft%20id%2F1/images')
+    expect(init.method).toBe('POST')
+    expect(init.body).toBeInstanceOf(FormData)
+    expect(result).toEqual({ success: true, data: { imageUrl: '/static/rule-images/xyz.png' } })
+  })
+
+  it('HTTP 非 2xx 时返回带 message 的失败结果', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 413,
+      text: async () => JSON.stringify({ message: '图片过大' }),
+    })
+    const file = new File(['x'], 'cover.png', { type: 'image/png' })
+
+    const result = await ruleApi.uploadRuleImage('d1', file)
+    expect(result.success).toBe(false)
+    expect(result.message).toBe('图片过大')
   })
 })

@@ -21,12 +21,12 @@
 
       <main class="detail-grid">
         <section class="screenshot-panel panel">
-          <img v-if="activeScreenshot" :src="activeScreenshot" :alt="rule.name">
+          <img v-if="coverImage" :src="resolveImageUrl(coverImage)" :alt="rule.name">
           <div v-else class="screenshot-placeholder">{{ rule.type }}</div>
         </section>
         <section class="intro-panel panel">
           <h2>玩法介绍</h2>
-          <p>{{ rule.introduction || rule.description }}</p>
+          <p class="intro-body">{{ rule.introduction || rule.description }}</p>
           <div class="action-row">
             <el-button class="market-btn" @click="router.push(`/rule-market/${encodeURIComponent(rule.id)}/rooms`)">搜索房间</el-button>
             <el-button class="market-btn" @click="quickCreateRoom">快速使用规则</el-button>
@@ -34,6 +34,29 @@
           </div>
         </section>
       </main>
+
+      <section v-if="screenshotList.length > 0" class="screenshots-panel panel">
+        <h2>规则截图</h2>
+        <el-carousel
+          v-if="screenshotList.length > 1"
+          :interval="5000"
+          height="360px"
+          indicator-position="outside"
+        >
+          <el-carousel-item
+            v-for="(shot, index) in screenshotList"
+            :key="shot + index"
+          >
+            <img :src="resolveImageUrl(shot)" :alt="`${rule.name} 截图 ${index + 1}`" class="screenshot-large">
+          </el-carousel-item>
+        </el-carousel>
+        <img
+          v-else
+          :src="resolveImageUrl(screenshotList[0])"
+          :alt="`${rule.name} 截图`"
+          class="screenshot-large screenshot-single"
+        >
+      </section>
 
       <section class="review-panel panel">
         <h2>评分与评论</h2>
@@ -82,6 +105,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import { marketApi, resolveDeveloperAvatar, type PublishedRuleDetail } from '../api/market'
+import { getApiUrl } from '../api/config'
 import { useRuleFork } from '../composables/useRuleFork'
 
 const route = useRoute()
@@ -104,7 +128,20 @@ function handleFork() {
 }
 
 const ruleId = computed(() => String(route.params.ruleId || ''))
-const activeScreenshot = computed(() => rule.value?.screenshots[0] || rule.value?.coverUrl || '')
+const screenshotList = computed(() => rule.value?.screenshots?.filter(Boolean) || [])
+const coverImage = computed(() => rule.value?.coverUrl || screenshotList.value[0] || '')
+
+/**
+ * BE 返回的图片 URL 形如 /static/rule-images/<uuid>.<ext>，是相对路径。
+ * 这里复用 getApiUrl，让 dev / prod 两套部署都能拼到正确的 BE 域名。
+ */
+function resolveImageUrl(url: string) {
+  if (!url) return ''
+  if (/^(https?:|data:)/i.test(url)) {
+    return url
+  }
+  return getApiUrl(url)
+}
 
 function formatDate(timestamp: number) {
   return new Date(timestamp).toLocaleString('zh-CN', {
@@ -333,6 +370,34 @@ onMounted(() => {
   color: #4a5063;
   line-height: 1.8;
   margin-bottom: 20px;
+}
+
+.intro-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.screenshots-panel {
+  margin-bottom: 16px;
+  padding: 22px;
+}
+
+.screenshots-panel h2 {
+  margin: 0 0 14px;
+  font-size: 20px;
+  letter-spacing: 0;
+}
+
+.screenshot-large {
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  background: #0f1320;
+  border-radius: 6px;
+}
+
+.screenshot-single {
+  max-height: 480px;
 }
 
 .review-form {

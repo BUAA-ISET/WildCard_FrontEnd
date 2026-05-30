@@ -1,5 +1,7 @@
 import type { ExportedRuleDesign } from '../types/ruleBuilder'
 import { apiDelete, apiGet, apiPost, apiPut } from './request'
+import { getApiUrl } from './config'
+import { AUTH_TOKEN_STORAGE_KEY } from '../utils/storageNamespace'
 
 const RULE_DRAFT_STORAGE_KEY = 'wildcard-rule-design-draft'
 
@@ -8,6 +10,9 @@ interface SaveRuleDesignParams {
   playerCount: number
   description: string
   design: ExportedRuleDesign
+  introduction?: string
+  coverUrl?: string
+  screenshotUrls?: string[]
 }
 
 export type RuleDraftStatus = 'draft' | 'pendingReview' | 'published' | 'rejected'
@@ -21,6 +26,9 @@ export interface RuleDraftSummary {
   updatedAt: number
   publishedRuleId?: string
   rejectReason?: string
+  introduction?: string
+  coverUrl?: string
+  screenshotUrls?: string[]
 }
 
 export interface RuleDraftDetail extends RuleDraftSummary {
@@ -98,6 +106,43 @@ export const ruleApi = {
       `/api/rules/drafts/${encodeURIComponent(draftId)}`,
       { useMock: false },
     )
+  },
+
+  /**
+   * 把规则相关图片（封面 / 截图）multipart 上传到 BE，拿到短 URL（/static/rule-images/<uuid>.<ext>）
+   * FE 拿到 imageUrl 后自行把它塞到 draft 的 coverUrl 或 screenshotUrls 字段，再走 updateDraft 持久化。
+   */
+  async uploadRuleImage(draftId: string, file: File): Promise<ApiResult<{ imageUrl: string }>> {
+    const form = new FormData()
+    form.append('file', file)
+    const url = getApiUrl(`/api/rules/drafts/${encodeURIComponent(draftId)}/images`)
+    const token =
+      (typeof window !== 'undefined' &&
+        (window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ||
+          window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY))) ||
+      ''
+    const headers: Record<string, string> = {}
+    if (token) headers.Authorization = `Bearer ${token}`
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: form,
+      })
+      const text = await response.text()
+      const result = text ? JSON.parse(text) : {}
+      if (!response.ok) {
+        return {
+          success: false,
+          message: result?.message || `上传失败 (HTTP ${response.status})`,
+        }
+      }
+      return result
+    } catch (err) {
+      console.warn('[ruleApi.uploadRuleImage] request failed', err)
+      return { success: false, message: '图片上传失败，请稍后重试' }
+    }
   },
 
   /**
