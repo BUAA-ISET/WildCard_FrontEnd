@@ -30,6 +30,7 @@
           <div class="action-row">
             <el-button class="market-btn" @click="router.push(`/rule-market/${encodeURIComponent(rule.id)}/rooms`)">搜索房间</el-button>
             <el-button class="market-btn" @click="quickCreateRoom">快速使用规则</el-button>
+            <el-button class="market-btn" @click="handleFork">Fork 规则</el-button>
           </div>
         </section>
       </main>
@@ -81,6 +82,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import { marketApi, resolveDeveloperAvatar, type PublishedRuleDetail } from '../api/market'
+import { useRuleFork } from '../composables/useRuleFork'
 
 const route = useRoute()
 const router = useRouter()
@@ -91,6 +93,14 @@ const reviewRating = ref(5)
 const reviewContent = ref('')
 const reviewImageUrl = ref('')
 const reviewImageName = ref('')
+const { forkRule } = useRuleFork()
+
+function handleFork() {
+  if (!rule.value) {
+    return
+  }
+  void forkRule({ id: rule.value.id, name: rule.value.name })
+}
 
 const ruleId = computed(() => String(route.params.ruleId || ''))
 const activeScreenshot = computed(() => rule.value?.screenshots[0] || rule.value?.coverUrl || '')
