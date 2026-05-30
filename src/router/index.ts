@@ -18,6 +18,8 @@ import RuleMarketHomeView from '../views/RuleMarketHomeView.vue'
 import RuleMarketDetailView from '../views/RuleMarketDetailView.vue'
 import RuleDeveloperDetailView from '../views/RuleDeveloperDetailView.vue'
 import RuleRoomSearchView from '../views/RuleRoomSearchView.vue'
+import AdminRuleReviewView from '../views/AdminRuleReviewView.vue'
+import { ElMessage } from 'element-plus'
 import { roomApi, getRoomEntryPath } from '../api/room'
 import { useUserStore } from '../stores/userStore'
 
@@ -84,6 +86,10 @@ const routes: RouteRecordRaw[] = [
         component: { template: '<div>管理面板</div>' }
       },
       {
+        path: 'admin/rules-review',
+        component: AdminRuleReviewView
+      },
+      {
         path: 'create-room',
         component: CreateRoomView
       },
@@ -144,6 +150,13 @@ router.beforeEach(async (to) => {
 
   if (!userStore.isLoggedIn && !isPublicPath) {
     return { path: '/user-info' }
+  }
+
+  // /admin/* 是审核员专属，非 admin 进入时直接拦回首页并提示。
+  // 注意要放在登录检查之后：未登录用户已经被踢去 /user-info 了。
+  if (to.path.startsWith('/admin/') && !userStore.isAdmin) {
+    ElMessage.error('需要管理员权限')
+    return { path: '/' }
   }
 
   if (userStore.isLoggedIn && to.path === '/user-info') {

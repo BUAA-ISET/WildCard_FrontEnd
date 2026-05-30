@@ -45,6 +45,7 @@ describe('MainLayout', () => {
             Shop: true,
             Brush: true,
             VideoPlay: true,
+            Document: true,
           },
         },
       })
@@ -73,6 +74,7 @@ describe('MainLayout', () => {
             Shop: true,
             Brush: true,
             VideoPlay: true,
+            Document: true,
           },
         },
       })
@@ -95,6 +97,7 @@ describe('MainLayout', () => {
             Shop: true,
             Brush: true,
             VideoPlay: true,
+            Document: true,
           },
         },
       })
@@ -127,6 +130,7 @@ describe('MainLayout', () => {
             Shop: true,
             Brush: true,
             VideoPlay: true,
+            Document: true,
           },
         },
       })
@@ -156,6 +160,7 @@ describe('MainLayout', () => {
             Shop: true,
             Brush: true,
             VideoPlay: true,
+            Document: true,
           },
         },
       })
@@ -185,6 +190,7 @@ describe('MainLayout', () => {
             Shop: true,
             Brush: true,
             VideoPlay: true,
+            Document: true,
           },
         },
       })
@@ -222,6 +228,7 @@ describe('MainLayout', () => {
             Shop: true,
             Brush: true,
             VideoPlay: true,
+            Document: true,
           },
         },
       })
@@ -238,6 +245,69 @@ describe('MainLayout', () => {
 
       expect(wrapper.find('.username').text()).toBe('updateduser')
       expect(wrapper.find('.user-email').text()).toBe('updated@mail.com')
+    })
+  })
+
+  describe('审核员入口可见性', () => {
+    const sharedStubs = {
+      'router-link': RouterLinkStub,
+      'router-view': true,
+      'el-icon': true,
+      House: true,
+      EditPen: true,
+      User: true,
+      Shop: true,
+      Brush: true,
+      VideoPlay: true,
+      Document: true,
+    }
+
+    it('role=admin 时显示规则审核入口并指向 /admin/rules-review', () => {
+      const userStore = useUserStore()
+      userStore.setUser({
+        id: '1',
+        username: 'adminuser',
+        email: 'admin@mail.com',
+        avatar: '',
+        role: 'admin',
+      })
+
+      const wrapper = mount(MainLayout, { global: { stubs: sharedStubs } })
+
+      expect(wrapper.text()).toContain('规则审核')
+      const adminLink = wrapper.findAllComponents(RouterLinkStub).find(link => link.props('to') === '/admin/rules-review')
+      expect(adminLink).toBeTruthy()
+    })
+
+    it('role=user 时不显示规则审核入口', () => {
+      const userStore = useUserStore()
+      userStore.setUser({
+        id: '1',
+        username: 'normaluser',
+        email: 'user@mail.com',
+        avatar: '',
+        role: 'user',
+      })
+
+      const wrapper = mount(MainLayout, { global: { stubs: sharedStubs } })
+
+      expect(wrapper.text()).not.toContain('规则审核')
+      const adminLink = wrapper.findAllComponents(RouterLinkStub).find(link => link.props('to') === '/admin/rules-review')
+      expect(adminLink).toBeFalsy()
+    })
+
+    it('默认 role 缺省视为普通用户，不显示规则审核入口', () => {
+      const userStore = useUserStore()
+      userStore.setUser({
+        id: '1',
+        username: 'noroleuser',
+        email: 'user@mail.com',
+        avatar: '',
+      })
+
+      const wrapper = mount(MainLayout, { global: { stubs: sharedStubs } })
+
+      expect(wrapper.text()).not.toContain('规则审核')
     })
   })
 })
