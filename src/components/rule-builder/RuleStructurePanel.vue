@@ -262,7 +262,7 @@ const removeActiveCardsetProperty = (propertyId: string) => {
 
 .panel-header p {
   margin: 0;
-  color: #777f8f;
+  color: #3a4050;
   font-size: 13px;
 }
 
@@ -413,7 +413,7 @@ const removeActiveCardsetProperty = (propertyId: string) => {
 
 .object-summary span {
   margin-top: 4px;
-  color: #737c8d;
+  color: #3a4050;
   font-size: 12px;
 }
 

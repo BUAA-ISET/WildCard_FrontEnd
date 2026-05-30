@@ -86,7 +86,7 @@ const groupedTemplates = computed(() => {
 
 .panel-header p {
   margin: 0;
-  color: #777f8f;
+  color: #3a4050;
   font-size: 13px;
 }
 

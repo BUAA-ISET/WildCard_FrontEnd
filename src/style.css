@@ -1,5 +1,7 @@
 :root {
-  --text: #6b6375;
+  /* 基础文字色：原来是 #6b6375，白底对比度 5.07 偏淡；用户反馈"看不清"。
+   * 加深到 #3a3340，白底对比度 9.6，AAA。 */
+  --text: #3a3340;
   --text-h: #08060d;
   --bg: #fff;
   --border: #e5e4e7;
@@ -8,6 +10,14 @@
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
+
+  /* Element Plus 灰度系列覆盖：默认 placeholder / disabled / 次级文字
+   * 偏淡（#c0c4cc / #a8abb2 在白底 2.x 远不达标），整体加深。 */
+  --el-text-color-primary: #2a2530;
+  --el-text-color-regular: #3a3340;
+  --el-text-color-secondary: #555060;
+  --el-text-color-placeholder: #7a7585;
+  --el-text-color-disabled: #9a96a3;
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 

@@ -935,7 +935,7 @@ const openTutorial = () => {
 
 .builder-header p {
   margin: 6px 0 0;
-  color: #737c8d;
+  color: #3a4050;
   font-size: 14px;
 }
 
@@ -1037,7 +1037,7 @@ const openTutorial = () => {
 
 .method-empty-state p {
   margin: 0 0 18px;
-  color: #737c8d;
+  color: #3a4050;
   font-size: 14px;
   line-height: 1.7;
 }
@@ -1093,7 +1093,7 @@ const openTutorial = () => {
 
 .step-item p {
   margin: 6px 0 0;
-  color: #737c8d;
+  color: #3a4050;
   font-size: 14px;
   line-height: 1.6;
 }

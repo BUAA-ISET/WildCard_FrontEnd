@@ -291,7 +291,7 @@ const returnDisplay = computed(() => displayReference(returnValue.value))
   border: 1px dashed #b8c2d4;
   border-radius: 6px;
   background: #f8f9fc;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -329,7 +329,7 @@ const returnDisplay = computed(() => displayReference(returnValue.value))
   border: 1px dashed #b8c2d4;
   border-radius: 6px;
   background: #f8f9fc;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -373,7 +373,7 @@ const returnDisplay = computed(() => displayReference(returnValue.value))
   border: 1px dashed #b8c2d4;
   border-radius: 6px;
   background: #f8f9fc;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -430,7 +430,7 @@ const returnDisplay = computed(() => displayReference(returnValue.value))
   border: 1px dashed #b8c2d4;
   border-radius: 6px;
   background: #f8f9fc;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -479,7 +479,7 @@ const returnDisplay = computed(() => displayReference(returnValue.value))
   border: 1px dashed #b8c2d4;
   border-radius: 6px;
   background: #f8f9fc;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -517,7 +517,7 @@ const returnDisplay = computed(() => displayReference(returnValue.value))
   border: 1px dashed #b8c2d4;
   border-radius: 6px;
   background: #f8f9fc;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -566,7 +566,7 @@ const returnDisplay = computed(() => displayReference(returnValue.value))
   border: 1px dashed #b8c2d4;
   border-radius: 6px;
   background: #f8f9fc;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
