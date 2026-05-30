@@ -27,6 +27,15 @@
             <el-icon><User /></el-icon>
             <span>用户中心</span>
           </router-link>
+          <router-link
+            v-if="userStore.isAdmin"
+            to="/admin/rules-review"
+            class="nav-item"
+            exact-active-class="active"
+          >
+            <el-icon><Document /></el-icon>
+            <span>规则审核</span>
+          </router-link>
         </nav>
         <div class="sidebar-bottom">
           <div class="user-avatar">
