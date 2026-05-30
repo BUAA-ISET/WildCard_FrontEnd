@@ -257,7 +257,7 @@ onMounted(() => {
 
 .creation-header p {
   margin: 6px 0 0;
-  color: #687083;
+  color: #4a5063;
 }
 
 .header-actions {
@@ -282,7 +282,7 @@ onMounted(() => {
   border: 1px solid #dfe3ec;
   border-radius: 8px;
   background: #fff;
-  color: #687083;
+  color: #4a5063;
   font-size: 14px;
 }
 
@@ -328,14 +328,14 @@ onMounted(() => {
 
 .rule-row p {
   margin: 6px 0 0;
-  color: #687083;
+  color: #4a5063;
 }
 
 .rule-meta {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #687083;
+  color: #4a5063;
   font-size: 13px;
 }
 
@@ -343,7 +343,7 @@ onMounted(() => {
   padding: 4px 8px;
   border-radius: 999px;
   background: #eef1f7;
-  color: #4f5665;
+  color: #3a4050;
 }
 
 .status-pill.published {
@@ -387,7 +387,7 @@ onMounted(() => {
 
 .empty-state p {
   margin: 0;
-  color: #687083;
+  color: #4a5063;
 }
 
 @media (max-width: 760px) {

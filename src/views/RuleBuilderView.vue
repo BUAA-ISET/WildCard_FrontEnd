@@ -959,7 +959,7 @@ const openTutorial = () => {
   border: 1px solid #d8dce5;
   border-radius: 8px;
   background: #fbfcfe;
-  color: #3c4351;
+  color: #2a3040;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
