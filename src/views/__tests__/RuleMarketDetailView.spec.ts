@@ -79,6 +79,8 @@ const stubs = {
     template: '<textarea v-if="type === \'textarea\'" v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><input v-else v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
   },
   ElUpload: { template: '<div class="upload"><slot /></div>' },
+  ElCarousel: { template: '<div class="carousel"><slot /></div>' },
+  ElCarouselItem: { template: '<div class="carousel-item"><slot /></div>' },
 }
 
 function mountView() {

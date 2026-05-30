@@ -41,7 +41,7 @@
         @keydown.enter.prevent="openRule(rule.id)"
       >
         <div class="rule-cover">
-          <img v-if="rule.coverUrl" :src="rule.coverUrl" :alt="rule.name">
+          <img v-if="rule.coverUrl" :src="resolveImageUrl(rule.coverUrl)" :alt="rule.name">
           <span v-else>{{ rule.type }}</span>
         </div>
         <div class="rule-card-body">
@@ -80,6 +80,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { marketApi, resolveDeveloperAvatar, type PublishedRuleSummary } from '../api/market'
+import { getApiUrl } from '../api/config'
 import { useRuleFork } from '../composables/useRuleFork'
 
 const router = useRouter()
@@ -97,6 +98,15 @@ const ruleTypes = computed(() => Array.from(new Set(rules.value.map((rule) => ru
 
 function formatDate(timestamp: number) {
   return new Date(timestamp).toLocaleDateString('zh-CN')
+}
+
+// BE 返回的封面 URL 形如 /static/rule-images/<uuid>.<ext>，需要拼上 API 域。
+function resolveImageUrl(url: string) {
+  if (!url) return ''
+  if (/^(https?:|data:)/i.test(url)) {
+    return url
+  }
+  return getApiUrl(url)
 }
 
 async function loadRules() {

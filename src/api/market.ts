@@ -103,8 +103,8 @@ const mockRules: PublishedRuleDetail[] = [
     rating: 4.6,
     reviewCount: 18,
     publishedAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
-    coverUrl: '',
-    screenshots: [],
+    coverUrl: wildcardLogoUrl,
+    screenshots: [wildcardLogoUrl, defaultAvatarUrl],
     introduction: 'Tiny Demo 是一套短局制规则，强调快速发牌、即时比较和明确结算。它适合作为新玩家熟悉 WildCard 自定义规则流程的入门模板。',
     reviews: [
       {
@@ -131,7 +131,7 @@ const mockRules: PublishedRuleDetail[] = [
     rating: 4.3,
     reviewCount: 11,
     publishedAt: Date.now() - 1000 * 60 * 60 * 24 * 8,
-    coverUrl: '',
+    coverUrl: wildcardLogoUrl,
     screenshots: [],
     introduction: 'Duel Demo 保留了双人对抗的核心结构，并用更完整的流程演示规则构建器导出的运行逻辑。',
     reviews: [],

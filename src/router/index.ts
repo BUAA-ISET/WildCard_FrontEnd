@@ -13,6 +13,7 @@ import JoinRoomView from '../views/JoinRoomView.vue'
 import CreateRoomView from '../views/CreateRoomView.vue'
 import CreationCenterView from '../views/CreationCenterView.vue'
 import RuleBuilderView from '../views/RuleBuilderView.vue'
+import PublishFormView from '../views/PublishFormView.vue'
 import RuleMarketHomeView from '../views/RuleMarketHomeView.vue'
 import RuleMarketDetailView from '../views/RuleMarketDetailView.vue'
 import RuleDeveloperDetailView from '../views/RuleDeveloperDetailView.vue'
@@ -65,6 +66,10 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'creation-center/:draftId',
         component: RuleBuilderView
+      },
+      {
+        path: 'creation-center/:draftId/publish',
+        component: PublishFormView
       },
       {
         path: 'match-history',

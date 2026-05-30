@@ -71,6 +71,14 @@
           <span>{{ formatTime(rule.updatedAt) }}</span>
           <button
             type="button"
+            class="publish-action"
+            :disabled="rule.status === 'pendingReview'"
+            @click.stop="openPublishForm(rule.id, rule.status)"
+          >
+            {{ publishButtonLabel(rule.status) }}
+          </button>
+          <button
+            type="button"
             class="delete-action"
             :disabled="deleting"
             @click.stop="deleteRule(rule.id)"
@@ -109,6 +117,26 @@ const STATUS_LABELS: Record<RuleDraftStatus, string> = {
 function statusLabel(status: RuleDraftStatus | string | undefined) {
   if (!status) return '草稿'
   return STATUS_LABELS[status as RuleDraftStatus] ?? status
+}
+
+function publishButtonLabel(status: RuleDraftStatus | string | undefined) {
+  switch (status) {
+    case 'pendingReview':
+      return '审核中'
+    case 'published':
+      return '更新上架规则'
+    case 'rejected':
+      return '重新发布'
+    default:
+      return '发布规则'
+  }
+}
+
+function openPublishForm(draftId: string, status: RuleDraftStatus | string | undefined) {
+  if (status === 'pendingReview') {
+    return
+  }
+  void router.push(`/creation-center/${encodeURIComponent(draftId)}/publish`)
 }
 
 function formatTime(timestamp: number) {
@@ -403,6 +431,31 @@ onMounted(() => {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.publish-action {
+  border: 1px solid #4f63ff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #eef1ff;
+  color: #2d3fb5;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.publish-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  background: #eef1f7;
+  color: #6b7280;
+  border-color: #cbd0d8;
+}
+
+.publish-action:hover:not(:disabled),
+.publish-action:focus:not(:disabled) {
+  background: #dfe5ff;
+  outline: none;
 }
 
 .delete-action:disabled {
