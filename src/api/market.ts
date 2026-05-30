@@ -1,6 +1,19 @@
 import { apiGet, apiPost } from './request'
 import { shouldUseMarketMockApi } from './config'
 import defaultAvatarUrl from '../assets/default-avatar.svg'
+import wildcardLogoUrl from '../assets/logo.svg'
+
+const SYSTEM_DEVELOPER_ID = 'system'
+
+export function resolveDeveloperAvatar(developer: { id: string; avatar: string }): string {
+  if (developer.avatar) {
+    return developer.avatar
+  }
+  if (developer.id === SYSTEM_DEVELOPER_ID) {
+    return wildcardLogoUrl
+  }
+  return defaultAvatarUrl
+}
 
 export interface MarketDeveloper {
   id: string

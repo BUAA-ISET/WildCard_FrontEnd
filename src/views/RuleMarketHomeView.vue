@@ -51,7 +51,7 @@
           </div>
           <p>{{ rule.description }}</p>
           <div class="developer-row">
-            <img :src="rule.developer.avatar" :alt="rule.developer.name">
+            <img :src="resolveDeveloperAvatar(rule.developer)" :alt="rule.developer.name">
             <span>{{ rule.developer.name }}</span>
           </div>
           <div class="card-footer">
@@ -69,7 +69,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { marketApi, type PublishedRuleSummary } from '../api/market'
+import { marketApi, resolveDeveloperAvatar, type PublishedRuleSummary } from '../api/market'
 
 const router = useRouter()
 const loading = ref(false)

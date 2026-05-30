@@ -53,8 +53,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import defaultAvatarUrl from '../assets/default-avatar.svg'
-import { marketApi, type PublishedRuleSummary } from '../api/market'
+import { marketApi, resolveDeveloperAvatar, type PublishedRuleSummary } from '../api/market'
 
 const route = useRoute()
 const router = useRouter()
@@ -65,7 +64,9 @@ const rules = ref<PublishedRuleSummary[]>([])
 const developerId = computed(() => String(route.params.developerId || ''))
 const firstRule = computed(() => rules.value[0])
 const developerName = computed(() => firstRule.value?.developer.name || '开发者')
-const developerAvatar = computed(() => firstRule.value?.developer.avatar || defaultAvatarUrl)
+const developerAvatar = computed(() =>
+  firstRule.value ? resolveDeveloperAvatar(firstRule.value.developer) : ''
+)
 const developerBio = computed(() => firstRule.value?.developer.bio || '该开发者还没有留下简介。')
 
 async function loadRules() {
