@@ -17,6 +17,7 @@ vi.mock('../api/rule', () => ({
     createDraft: vi.fn().mockResolvedValue({ success: true, data: { id: 'draft-test', updatedAt: 0 } }),
     updateDraft: vi.fn().mockResolvedValue({ success: true, data: { id: 'draft-test', updatedAt: 0 } }),
     publishDraft: vi.fn().mockResolvedValue({ success: true, data: { ruleId: 'rule-test', version: 1 } }),
+    submitReview: vi.fn().mockResolvedValue({ success: true, data: { id: 'draft-test', status: 'pendingReview', updatedAt: 0 } }),
   },
 }))
 
@@ -168,6 +169,27 @@ describe('RuleBuilderView.vue', () => {
       expect(buttons.length).toBeGreaterThan(0)
       const buttonTexts = buttons.map(btn => btn.text())
       expect(buttonTexts).toContain('保存草稿')
+    })
+
+    it('新草稿（status=draft）发布按钮文案为"提交审核"', () => {
+      const wrapper = mount(RuleBuilderView, {
+        global: {
+          stubs: {
+            'el-button': { template: '<button class="el-button"><slot /></button>' },
+            'el-dialog': true,
+            'el-input': true,
+            'rule-structure-panel': true,
+            'rule-component-palette': true,
+            'rule-flow-canvas': true,
+            'rule-property-panel': true,
+            'rule-json-preview': true,
+          },
+        },
+      })
+      const buttons = wrapper.findAll('.header-actions .el-button')
+      const buttonTexts = buttons.map(btn => btn.text())
+      expect(buttonTexts).toContain('提交审核')
+      expect(buttonTexts).not.toContain('完成并上传规则')
     })
 
     it('显示JSON预览切换按钮', () => {

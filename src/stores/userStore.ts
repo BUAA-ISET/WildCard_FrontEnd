@@ -40,8 +40,12 @@ export const useUserStore = defineStore('user', {
       email: storedUser?.email ?? '',
       username: storedUser?.username ?? '',
       avatar: storedUser?.avatar ?? '',
+      role: storedUser?.role ?? 'user',
       isLoggedIn: storedUser !== null,
     }
+  },
+  getters: {
+    isAdmin: (state) => state.role === 'admin',
   },
   actions: {
     applyUser(user: User | null) {
@@ -50,6 +54,7 @@ export const useUserStore = defineStore('user', {
         this.email = ''
         this.username = ''
         this.avatar = ''
+        this.role = 'user'
         this.isLoggedIn = false
         saveUserToStorage(null)
         return
@@ -59,6 +64,7 @@ export const useUserStore = defineStore('user', {
       this.email = user.email
       this.username = user.username
       this.avatar = user.avatar
+      this.role = user.role ?? 'user'
       this.isLoggedIn = true
       saveUserToStorage(user)
     },

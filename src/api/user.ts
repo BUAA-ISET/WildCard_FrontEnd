@@ -9,6 +9,7 @@ export interface User {
   email: string
   avatar: string
   token?: string
+  role?: string
 }
 
 export interface LoginParams {
@@ -66,6 +67,7 @@ type BackendUser = {
   email: string
   avatar?: string
   token?: string
+  role?: string
 }
 
 const VERIFICATION_CODE_TTL = 5 * 60 * 1000
@@ -218,6 +220,7 @@ function normalizeBackendUser(user: BackendUser | null | undefined): User | null
     email: user.email,
     avatar: user.avatar || '',
     token: user.token,
+    role: user.role,
   }
 }
 

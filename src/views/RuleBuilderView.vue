@@ -11,7 +11,20 @@
         <el-button @click="openJsonImport">导入 JSON</el-button>
         <el-button @click="showJson = !showJson">{{ showJson ? '隐藏 JSON' : '显示 JSON' }}</el-button>
         <el-button type="primary" @click="saveDesign">保存草稿</el-button>
-        <el-button type="success" @click="uploadCompletedRule">完成并上传规则</el-button>
+        <el-button
+          type="success"
+          :disabled="publishButtonDisabled"
+          :loading="submitting"
+          @click="uploadCompletedRule"
+        >
+          {{ publishButtonLabel }}
+        </el-button>
+        <span
+          v-if="draftStatus === 'rejected' && rejectReason"
+          class="reject-reason-inline"
+        >
+          驳回原因：{{ rejectReason }}
+        </span>
       </div>
     </header>
 
@@ -150,6 +163,7 @@ import RuleJsonPreview from '../components/rule-builder/RuleJsonPreview.vue'
 import RulePropertyPanel from '../components/rule-builder/RulePropertyPanel.vue'
 import RuleStructurePanel from '../components/rule-builder/RuleStructurePanel.vue'
 import { ruleApi } from '../api'
+import type { RuleDraftStatus } from '../api/rule'
 import type { ComponentTemplate, FlowGraphDraft, FlowScope, MethodDraft, RuleEdgeDraft, RuleNodeDraft } from '../types/ruleBuilder'
 import {
   cloneContent,
@@ -173,6 +187,9 @@ const route = useRoute()
 const router = useRouter()
 const design = reactive(createInitialDesign())
 const draftId = ref<string | null>(null)
+const draftStatus = ref<RuleDraftStatus>('draft')
+const rejectReason = ref<string>('')
+const submitting = ref(false)
 const activeWorkspace = ref<WorkspaceKey>('structure')
 const activeCardsetId = ref(design.cardsets[0].id)
 const activeComparisonId = ref(design.cardsetComparisons[0]?.id || null)
@@ -785,11 +802,15 @@ const loadDraftFromRoute = async () => {
   const routeDraftId = typeof route.params.draftId === 'string' ? route.params.draftId : ''
   if (!routeDraftId) {
     draftId.value = null
+    draftStatus.value = 'draft'
+    rejectReason.value = ''
     return
   }
 
   if (routeDraftId === 'new') {
     draftId.value = null
+    draftStatus.value = 'draft'
+    rejectReason.value = ''
     return
   }
 
@@ -801,6 +822,8 @@ const loadDraftFromRoute = async () => {
   }
 
   draftId.value = result.data.id
+  draftStatus.value = (result.data.status as RuleDraftStatus) || 'draft'
+  rejectReason.value = result.data.rejectReason || ''
   applyDesign(importRuleDesign(result.data.design, {
     name: result.data.name,
     playerCount: result.data.playerCount,
@@ -871,27 +894,50 @@ const saveDesign = async () => {
 }
 
 const uploadCompletedRule = async () => {
+  if (draftStatus.value === 'pendingReview') {
+    ElMessage.info('规则正在审核中，请等待审核员处理')
+    return
+  }
+
   if (!validateBeforeSubmit() || !validateBeforePublish()) {
     return
   }
 
-  if (!draftId.value) {
-    ElMessage.warning('请先保存草稿，再完成并上传规则')
-    return
-  }
-
+  submitting.value = true
   const savedDraftId = await persistDraft()
   if (!savedDraftId) {
+    submitting.value = false
     return
   }
 
-  const result = await ruleApi.publishDraft(savedDraftId)
-  if (result.success) {
-    ElMessage.success('规则已发布，可在创建房间时选择')
+  const result = await ruleApi.submitReview(savedDraftId)
+  submitting.value = false
+
+  if (result.success && result.data) {
+    draftStatus.value = (result.data.status as RuleDraftStatus) || 'pendingReview'
+    rejectReason.value = ''
+    ElMessage.success('规则已提交审核，请等待审核员处理')
   } else {
-    ElMessage.error(result.message || '规则发布失败')
+    ElMessage.error(result.message || '规则提交审核失败')
   }
 }
+
+const publishButtonLabel = computed(() => {
+  switch (draftStatus.value) {
+    case 'pendingReview':
+      return '审核中'
+    case 'published':
+      return '更新上架规则'
+    case 'rejected':
+      return '重新提交审核'
+    default:
+      return '提交审核'
+  }
+})
+
+const publishButtonDisabled = computed(() => {
+  return submitting.value || draftStatus.value === 'pendingReview'
+})
 
 const backToCenter = () => {
   void router.push('/creation-center')
@@ -943,6 +989,17 @@ const openTutorial = () => {
   display: flex;
   gap: 10px;
   flex-shrink: 0;
+  align-items: center;
+}
+
+.reject-reason-inline {
+  color: #b42323;
+  font-size: 12px;
+  font-weight: 500;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-tabs {

@@ -7,6 +7,7 @@ export { API_CONFIG, getApiUrl } from './config'
 export { apiRequest, apiGet, apiPost, apiPut, apiDelete } from './request'
 
 export type { User, LoginParams, RegisterParams, UpdatePasswordParams } from './user'
+export type { RuleDraftStatus, RuleDraftSummary, RuleDraftDetail, SubmitReviewResponse } from './rule'
 export type { PublishedRuleSummary, PublishedRuleDetail, MarketDeveloper, RuleReview, RuleRoom } from './market'
 export type { Room, Player, CreateRoomParams, JoinRoomParams, GameRuleOption } from './room'
 export type { GameSnapshot, GameCard, GamePlayerView, GameTableView } from './game'
