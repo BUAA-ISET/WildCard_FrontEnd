@@ -130,8 +130,13 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const userStore = useUserStore()
   const publicPaths = new Set(['/user-info'])
+  // 团队介绍 / 联系我们 / 帮助中心 三页是公开静态页，谁都可看。
+  // 这里特别需要：当用户在已登录 tab 里 window.open('/teaminfo/...') 打开新窗时，
+  // 新 tab 的 sessionStorage 为空、读不到 token，beforeEach 会把它误识为未登录
+  // 然后强制重定向到 /user-info，导致用户感受是「点了顶部链接，没跳转」。
+  const isPublicPath = publicPaths.has(to.path) || to.path.startsWith('/teaminfo/')
 
-  if (!userStore.isLoggedIn && !publicPaths.has(to.path)) {
+  if (!userStore.isLoggedIn && !isPublicPath) {
     return { path: '/user-info' }
   }
 
