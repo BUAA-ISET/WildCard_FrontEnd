@@ -59,6 +59,16 @@
             <span>{{ rule.rating.toFixed(1) }} · {{ rule.reviewCount }} 条评价</span>
             <span>{{ formatDate(rule.publishedAt) }}</span>
           </div>
+          <div class="card-actions">
+            <button
+              class="market-btn fork-btn"
+              type="button"
+              @click.stop="handleFork(rule)"
+              @keydown.enter.stop.prevent="handleFork(rule)"
+            >
+              Fork
+            </button>
+          </div>
         </div>
       </article>
     </main>
@@ -70,12 +80,18 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { marketApi, resolveDeveloperAvatar, type PublishedRuleSummary } from '../api/market'
+import { useRuleFork } from '../composables/useRuleFork'
 
 const router = useRouter()
 const loading = ref(false)
 const keyword = ref('')
 const selectedType = ref('')
 const rules = ref<PublishedRuleSummary[]>([])
+const { forkRule } = useRuleFork()
+
+function handleFork(rule: PublishedRuleSummary) {
+  void forkRule(rule)
+}
 
 const ruleTypes = computed(() => Array.from(new Set(rules.value.map((rule) => rule.type))).filter(Boolean))
 
@@ -267,6 +283,16 @@ onMounted(() => {
   flex-wrap: wrap;
   color: #687083;
   font-size: 13px;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fork-btn {
+  min-width: 80px;
+  padding: 6px 16px;
 }
 
 @media (max-width: 760px) {

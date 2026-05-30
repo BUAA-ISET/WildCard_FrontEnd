@@ -66,6 +66,12 @@ interface ApiResult<T = unknown> {
   message?: string
 }
 
+export interface ForkRuleResponse {
+  id: string
+  status: 'draft' | 'published'
+  updatedAt: number
+}
+
 interface RuleQueryParams {
   keyword?: string
   type?: string
@@ -234,6 +240,22 @@ export const marketApi = {
             imageUrl: payload.imageUrl,
             createdAt: Date.now(),
           },
+        }),
+      },
+    )
+  },
+
+  async forkRule(ruleId: string, name: string): Promise<ApiResult<ForkRuleResponse>> {
+    return apiPost<ApiResult<ForkRuleResponse>>(
+      `/api/rules/published/${encodeURIComponent(ruleId)}/fork`,
+      { name },
+      {
+        useMock: useMarketMock,
+        mockFn: () => ({
+          // Mock 模式下不返伪造的 draftId——跳到 /creation-center/{id} 会拉不到草稿。
+          // 主动返失败，避免给用户造成"成功但页面 404"的误解。
+          success: false,
+          message: 'Fork 在 mock 模式下不可用，请关闭 marketUseMock 后重试',
         }),
       },
     )
