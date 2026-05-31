@@ -163,18 +163,6 @@ code {
   box-sizing: border-box;
 }
 
-/* 审核员预览路由：iframe 嵌入版本不需要居中、边框、最大宽度限制。
- * 让 #app 撑满 iframe，确保里头的 height:100% 链路有正确的父级高度。
- * 用 :has 直接探测 preview-shell 子元素，避免 JS 改 root class。 */
-#app:has(.preview-shell) {
-  width: 100%;
-  max-width: none;
-  border: 0;
-  margin: 0;
-  height: 100vh;
-  min-height: 100vh;
-}
-
 #center {
   display: flex;
   flex-direction: column;
