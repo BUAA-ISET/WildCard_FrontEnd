@@ -70,4 +70,39 @@ describe('adminApi', () => {
     expect(result.success).toBe(true)
     expect(result.data?.status).toBe('rejected')
   })
+
+  it('getDraft 走 GET /api/admin/rules/drafts/{id}，并返回完整草稿', async () => {
+    vi.mocked(apiGet).mockResolvedValue({
+      success: true,
+      data: {
+        id: 'd-preview',
+        name: '示例规则',
+        playerCount: 2,
+        description: '简介',
+        status: 'pendingReview',
+        updatedAt: 1700000000000,
+        createdAt: 1699999999000,
+        ownerId: 'u-1',
+        design: { classes: {}, cardsets: {}, cardset_comparisons: {}, match_flow: {}, end_flow: {} },
+      },
+    })
+
+    const result = await adminApi.getDraft('d-preview')
+
+    expect(apiGet).toHaveBeenCalledWith('/api/admin/rules/drafts/d-preview', { useMock: false })
+    expect(result.success).toBe(true)
+    expect(result.data?.id).toBe('d-preview')
+    expect(result.data?.design).toBeDefined()
+  })
+
+  it('getDraft 对包含特殊字符的 draftId 做 URL 编码', async () => {
+    vi.mocked(apiGet).mockResolvedValue({ success: true, data: undefined as never })
+
+    await adminApi.getDraft('draft/with space')
+
+    expect(apiGet).toHaveBeenCalledWith(
+      '/api/admin/rules/drafts/draft%2Fwith%20space',
+      { useMock: false },
+    )
+  })
 })

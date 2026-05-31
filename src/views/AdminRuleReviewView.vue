@@ -43,6 +43,9 @@
                 <span>提交时间：{{ formatTime(selectedDraft.updatedAt) }}</span>
               </p>
             </div>
+            <div class="detail-header-actions">
+              <el-button type="primary" plain @click="openVisualPreview">可视化预览</el-button>
+            </div>
           </header>
 
           <section class="detail-section">
@@ -103,10 +106,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminApi, type PendingReviewDraft } from '../api/admin'
 import { getApiUrl } from '../api/config'
 
+const router = useRouter()
 const loading = ref(false)
 const approving = ref(false)
 const rejecting = ref(false)
@@ -155,6 +160,17 @@ function resolveImageUrl(url: string) {
 function selectDraft(draftId: string) {
   selectedId.value = draftId
   designVisible.value = false
+}
+
+/**
+ * 在新标签页打开 RuleBuilderView 的只读预览。
+ * 用 router.resolve 而非直接拼字符串，方便测试用 mock router.resolve 验证调用，并保留 history mode 的 base。
+ * window.open 用 noopener,noreferrer 切断 opener，新窗不能 navigate 回这里。
+ */
+function openVisualPreview() {
+  if (!selectedDraft.value) return
+  const url = router.resolve(`/admin/rules-review/preview/${selectedDraft.value.draftId}`).href
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 async function loadPending() {
@@ -355,9 +371,20 @@ onMounted(() => {
   min-height: 320px;
 }
 
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .detail-header h2 {
   margin: 0;
   font-size: 22px;
+}
+
+.detail-header-actions {
+  flex-shrink: 0;
 }
 
 .detail-author {

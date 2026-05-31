@@ -16,6 +16,20 @@ vi.mock('../../api/config', () => ({
   getApiUrl: (endpoint: string) => `http://test${endpoint}`,
 }))
 
+const resolveMock = vi.fn((path: string) => ({ href: path }))
+
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
+  return {
+    ...actual,
+    useRouter: () => ({
+      resolve: resolveMock,
+      push: vi.fn(),
+      replace: vi.fn(),
+    }),
+  }
+})
+
 vi.mock('element-plus', async () => {
   const actual = await vi.importActual<typeof import('element-plus')>('element-plus')
   return {
@@ -202,5 +216,32 @@ describe('AdminRuleReviewView', () => {
     await flushPromises()
 
     expect(ElMessage.error).toHaveBeenCalledWith('权限不足')
+  })
+
+  it('点击"可视化预览"按钮在新窗打开 RuleBuilderView 只读预览', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null as never)
+    resolveMock.mockClear()
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.findAll('.pending-row')[0].trigger('click')
+    await flushPromises()
+
+    const previewBtn = wrapper
+      .findAll('.detail-header-actions button')
+      .find(btn => btn.text().includes('可视化预览'))
+    expect(previewBtn).toBeTruthy()
+    await previewBtn!.trigger('click')
+
+    expect(resolveMock).toHaveBeenCalledWith('/admin/rules-review/preview/d-alpha')
+    expect(openSpy).toHaveBeenCalledTimes(1)
+    expect(openSpy).toHaveBeenCalledWith(
+      '/admin/rules-review/preview/d-alpha',
+      '_blank',
+      'noopener,noreferrer',
+    )
+
+    openSpy.mockRestore()
   })
 })

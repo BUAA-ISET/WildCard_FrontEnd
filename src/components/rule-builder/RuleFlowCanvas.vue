@@ -6,8 +6,8 @@
         <p>{{ subtitle }}</p>
       </div>
       <div class="toolbar-actions">
-        <el-button size="small" @click="$emit('auto-layout')">整理布局</el-button>
-        <el-button size="small" :disabled="!canDeleteSelected" @click="$emit('delete-selected')">删除节点</el-button>
+        <el-button v-if="!readonly" size="small" @click="$emit('auto-layout')">整理布局</el-button>
+        <el-button v-if="!readonly" size="small" :disabled="!canDeleteSelected" @click="$emit('delete-selected')">删除节点</el-button>
         <el-button class="fullscreen-btn" size="small" @click="$emit('toggle-fullscreen')">
           <el-icon>
             <FullScreen v-if="!isFullscreen" />
@@ -24,7 +24,10 @@
       v-model:edges="localEdges"
       class="rule-flow"
       :default-viewport="{ x: 80, y: 60, zoom: 0.9 }"
-      :nodes-draggable="true"
+      :nodes-draggable="!readonly"
+      :nodes-connectable="!readonly"
+      :elements-selectable="!readonly"
+      :delete-key-code="readonly ? null : 'Backspace'"
       @connect="handleConnect"
       @node-click="handleNodeClick"
       @pane-click="$emit('select-node', null)"
@@ -56,6 +59,7 @@ const props = defineProps<{
   edges: RuleEdgeDraft[]
   selectedNodeId: string | null
   isFullscreen: boolean
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
