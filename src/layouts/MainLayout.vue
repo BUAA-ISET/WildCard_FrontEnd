@@ -106,6 +106,20 @@ const handleHelp = () => {
   overflow: hidden;
 }
 
+/* 审核员预览 iframe：藏掉外层 chrome，再把高度链强制贯通到 RuleBuilder。
+ * 父链 #app 用了 min-height:100svh 和 flex column，预览时改成显式 height
+ * 让里头的 height:100% 能拿到具体值。 */
+.preview-shell {
+  height: 100vh;
+}
+.preview-shell .main-body,
+.preview-shell .main-content,
+.preview-shell .content-area {
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
 .auth-only-layout {
   background: #fff;
 }
