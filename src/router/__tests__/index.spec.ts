@@ -73,4 +73,46 @@ describe('router 守卫：/admin 命名空间', () => {
     expect(router.currentRoute.value.path).toBe('/admin/rules-review')
     expect(ElMessage.error).not.toHaveBeenCalled()
   })
+
+  it('未登录访问 /admin/rules-review/preview/:draftId 被踢回 /user-info', async () => {
+    const { default: router } = await import('../index')
+    await router.push('/admin/rules-review/preview/d-preview')
+
+    expect(router.currentRoute.value.path).toBe('/user-info')
+  })
+
+  it('非 admin 访问 /admin/rules-review/preview/:draftId 被拦回首页', async () => {
+    const { default: router } = await import('../index')
+    const userStore = useUserStore()
+    userStore.setUser({
+      id: '1',
+      username: 'normaluser',
+      email: 'u@mail.com',
+      avatar: '',
+      role: 'user',
+    })
+
+    await router.push('/admin/rules-review/preview/d-preview')
+
+    expect(router.currentRoute.value.path).toBe('/')
+    expect(ElMessage.error).toHaveBeenCalledWith('需要管理员权限')
+  })
+
+  it('admin 可正常进入 /admin/rules-review/preview/:draftId', async () => {
+    const { default: router } = await import('../index')
+    const userStore = useUserStore()
+    userStore.setUser({
+      id: '1',
+      username: 'adminuser',
+      email: 'admin@mail.com',
+      avatar: '',
+      role: 'admin',
+    })
+
+    await router.push('/admin/rules-review/preview/d-preview')
+
+    expect(router.currentRoute.value.path).toBe('/admin/rules-review/preview/d-preview')
+    expect(router.currentRoute.value.params.draftId).toBe('d-preview')
+    expect(ElMessage.error).not.toHaveBeenCalled()
+  })
 })

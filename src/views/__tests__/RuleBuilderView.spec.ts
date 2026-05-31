@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RuleBuilderView from '../RuleBuilderView.vue'
 import {
@@ -21,6 +21,18 @@ vi.mock('../api/rule', () => ({
   },
 }))
 
+const adminGetDraftMock = vi.fn()
+vi.mock('../../api/admin', () => ({
+  adminApi: {
+    getDraft: (...args: unknown[]) => adminGetDraftMock(...args),
+  },
+}))
+
+const routeMock = {
+  params: {} as Record<string, string>,
+  path: '/creation-center',
+}
+
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
   return {
@@ -29,9 +41,7 @@ vi.mock('vue-router', async () => {
       push: vi.fn(),
       replace: vi.fn(),
     }),
-    useRoute: () => ({
-      params: {},
-    }),
+    useRoute: () => routeMock,
   }
 })
 
@@ -51,6 +61,10 @@ vi.mock('element-plus', async () => {
 describe('RuleBuilderView.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // 默认回到作者编辑路由，readonly 用例自行覆盖
+    routeMock.params = {}
+    routeMock.path = '/creation-center'
+    adminGetDraftMock.mockReset()
   })
 
   describe('页面渲染', () => {
@@ -311,6 +325,108 @@ describe('RuleBuilderView.vue', () => {
       expect(exportedAgain['1'].position).toEqual(sourceFlow['1'].position)
       expect(exportedAgain['2'].position).toEqual(sourceFlow['2'].position)
       expect(exportedAgain['3'].position).toEqual(sourceFlow['3'].position)
+    })
+  })
+
+  describe('审核员只读预览模式', () => {
+    const emptyDesignPayload = {
+      classes: {},
+      cardsets: {},
+      cardset_comparisons: {},
+      match_flow: {},
+      end_flow: {},
+    }
+
+    const previewStubs = {
+      'el-button': { template: '<button class="el-button"><slot /></button>' },
+      'el-dialog': true,
+      'el-input': true,
+      'rule-structure-panel': true,
+      'rule-component-palette': true,
+      'rule-flow-canvas': true,
+      'rule-property-panel': true,
+      'rule-json-preview': true,
+    }
+
+    function enterPreviewRoute() {
+      routeMock.params = { draftId: 'd-preview' }
+      routeMock.path = '/admin/rules-review/preview/d-preview'
+    }
+
+    it('命中 preview 路由时通过 adminApi.getDraft 加载草稿', async () => {
+      enterPreviewRoute()
+      adminGetDraftMock.mockResolvedValueOnce({
+        success: true,
+        data: {
+          id: 'd-preview',
+          name: 'Preview 规则',
+          playerCount: 3,
+          description: '简介',
+          status: 'pendingReview',
+          updatedAt: 0,
+          createdAt: 0,
+          design: emptyDesignPayload,
+        },
+      })
+
+      mount(RuleBuilderView, { global: { stubs: previewStubs } })
+      await flushPromises()
+
+      expect(adminGetDraftMock).toHaveBeenCalledWith('d-preview')
+    })
+
+    it('readonly 模式隐藏「保存草稿」「提交审核」「导入 JSON」按钮，且根节点带 readonly-mode class', async () => {
+      enterPreviewRoute()
+      adminGetDraftMock.mockResolvedValueOnce({
+        success: true,
+        data: {
+          id: 'd-preview',
+          name: 'Preview 规则',
+          playerCount: 3,
+          description: '',
+          status: 'pendingReview',
+          updatedAt: 0,
+          createdAt: 0,
+          design: emptyDesignPayload,
+        },
+      })
+
+      const wrapper = mount(RuleBuilderView, { global: { stubs: previewStubs } })
+      await flushPromises()
+
+      expect(wrapper.find('.rule-builder-page').classes()).toContain('readonly-mode')
+
+      const buttonTexts = wrapper.findAll('.header-actions .el-button').map(btn => btn.text())
+      expect(buttonTexts).not.toContain('保存草稿')
+      expect(buttonTexts).not.toContain('提交审核')
+      expect(buttonTexts).not.toContain('导入 JSON')
+      expect(buttonTexts).toContain('返回审核面板')
+      expect(buttonTexts).toContain('教程')
+    })
+
+    it('readonly 模式显示"只读预览模式"提示条', async () => {
+      enterPreviewRoute()
+      adminGetDraftMock.mockResolvedValueOnce({
+        success: true,
+        data: {
+          id: 'd-preview',
+          name: 'Preview 规则',
+          playerCount: 3,
+          description: '',
+          status: 'pendingReview',
+          updatedAt: 0,
+          createdAt: 0,
+          design: emptyDesignPayload,
+        },
+      })
+
+      const wrapper = mount(RuleBuilderView, { global: { stubs: previewStubs } })
+      await flushPromises()
+
+      const banner = wrapper.find('.readonly-banner')
+      expect(banner.exists()).toBe(true)
+      expect(banner.text()).toContain('只读预览模式')
+      expect(banner.text()).toContain('审核员')
     })
   })
 })

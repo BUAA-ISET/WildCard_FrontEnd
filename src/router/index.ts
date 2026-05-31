@@ -90,6 +90,12 @@ const routes: RouteRecordRaw[] = [
         component: AdminRuleReviewView
       },
       {
+        // 审核员的可视化预览模式：与作者编辑共用 RuleBuilderView 组件，由组件内部根据 route.path 切到 readonly。
+        // 也走 /admin/* 守卫，非 admin 会被自动拦回首页。
+        path: 'admin/rules-review/preview/:draftId',
+        component: RuleBuilderView
+      },
+      {
         path: 'create-room',
         component: CreateRoomView
       },
