@@ -978,7 +978,10 @@ const openTutorial = () => {
   text-align: left;
 }
 
+/* 审核员只读模式下，本页嵌在 dialog 同源 iframe 里；iframe 视窗等于 dialog body，
+ * 没有外层 64px 应用头需要减。用 100% 占满 iframe 全部高度，避免画布被截到一截。 */
 .rule-builder-page.readonly-mode {
+  height: 100%;
   grid-template-rows: auto auto auto 1fr;
 }
 
