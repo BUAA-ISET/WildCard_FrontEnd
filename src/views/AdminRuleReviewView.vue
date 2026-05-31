@@ -105,8 +105,7 @@
     <el-dialog
       v-model="previewVisible"
       title="可视化预览"
-      width="92%"
-      top="3vh"
+      fullscreen
       class="preview-dialog"
       :close-on-click-modal="false"
       :close-on-press-escape="true"
@@ -532,31 +531,17 @@ onMounted(() => {
   }
 }
 
-.preview-dialog {
-  --dialog-header-height: 56px;
-}
-
-/* 撑满整个 dialog 容器：el-dialog 默认有 max-height ~75vh 限制，单写 body 高度
- * 没用，iframe 被截到很窄一条。把 dialog 自身钉到 94vh，body flex:1 拿满。 */
+/* 用 fullscreen prop 后 dialog 自身 height:100% 且去除 max-height；
+ * 仍需让 body 拿满去掉 padding，iframe 才能贴边占满。 */
 .preview-dialog :deep(.el-dialog) {
-  height: 94vh;
-  max-height: 94vh;
-  margin-top: 3vh !important;
-  margin-bottom: 3vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.preview-dialog :deep(.el-dialog__header) {
-  flex: 0 0 var(--dialog-header-height);
-  margin: 0;
-}
-
 .preview-dialog :deep(.el-dialog__body) {
   flex: 1 1 auto;
   padding: 0;
-  height: auto;
   min-height: 0;
   overflow: hidden;
 }
