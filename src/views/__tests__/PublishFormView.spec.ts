@@ -193,4 +193,42 @@ describe('PublishFormView', () => {
       '/static/rule-images/new.png',
     ])
   })
+
+  it('封面上传拒绝非 png/jpeg/webp 文件且不调用上传接口', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const componentInstance = wrapper.vm as unknown as {
+      handleCoverChange: (file: { raw: File }) => Promise<void>
+    }
+    const fakeFile = new File(['text'], 'cover.txt', { type: 'text/plain' })
+    await componentInstance.handleCoverChange({ raw: fakeFile })
+    await flushPromises()
+
+    expect(ruleApi.uploadRuleImage).not.toHaveBeenCalled()
+    expect(ElMessage.warning).toHaveBeenCalledWith('仅支持 PNG / JPEG / WEBP 格式的图片')
+  })
+
+  it('截图上传达到 10 张上限时提示并跳过上传', async () => {
+    vi.mocked(ruleApi.getDraft).mockResolvedValueOnce({
+      success: true,
+      data: cloneDraft({
+        screenshotUrls: Array.from({ length: 10 }, (_, index) => `/static/rule-images/${index}.png`),
+      }),
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    const componentInstance = wrapper.vm as unknown as {
+      handleScreenshotChange: (file: { raw: File }) => Promise<void>
+      screenshotUrls: string[]
+    }
+    const fakeFile = new File(['x'], 'shot.png', { type: 'image/png' })
+    await componentInstance.handleScreenshotChange({ raw: fakeFile })
+    await flushPromises()
+
+    expect(componentInstance.screenshotUrls).toHaveLength(10)
+    expect(ruleApi.uploadRuleImage).not.toHaveBeenCalled()
+    expect(ElMessage.warning).toHaveBeenCalledWith('最多 10 张截图')
+  })
 })

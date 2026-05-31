@@ -20,6 +20,7 @@ vi.mock('../../api/market', async () => {
       ...actual.marketApi,
       getPublishedRuleDetail: vi.fn(),
       postRuleReview: vi.fn(),
+      uploadReviewImage: vi.fn(),
     },
   }
 })
@@ -104,6 +105,10 @@ describe('RuleMarketDetailView', () => {
         createdAt: new Date('2026-05-30T00:00:00Z').getTime(),
       },
     })
+    vi.mocked(marketApi.uploadReviewImage).mockResolvedValue({
+      success: true,
+      data: { imageUrl: '/static/review-images/review-2.png' },
+    })
   })
 
   it('loads and renders rule detail, developer, intro, and existing reviews', async () => {
@@ -115,6 +120,27 @@ describe('RuleMarketDetailView', () => {
     expect(wrapper.text()).toContain('每名玩家翻出一张牌')
     expect(wrapper.text()).toContain('WildCard 内置')
     expect(wrapper.text()).toContain('节奏很快')
+  })
+
+  it('resolves cover and screenshot short URLs against the backend host', async () => {
+    vi.mocked(marketApi.getPublishedRuleDetail).mockResolvedValueOnce({
+      success: true,
+      data: {
+        ...structuredClone(rule),
+        coverUrl: '/static/rule-images/cover.png',
+        screenshots: ['/static/rule-images/shot.png'],
+      },
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('.screenshot-panel img').attributes('src')).toBe(
+      'http://localhost:3000/static/rule-images/cover.png',
+    )
+    expect(wrapper.find('.screenshot-single').attributes('src')).toBe(
+      'http://localhost:3000/static/rule-images/shot.png',
+    )
   })
 
   it('navigates to developer, room search, and quick create destinations', async () => {
@@ -159,6 +185,68 @@ describe('RuleMarketDetailView', () => {
     expect(wrapper.text()).toContain('我')
     expect(wrapper.text()).toContain('值得推荐')
     expect(ElMessage.success).toHaveBeenCalledWith('评论已提交')
+  })
+
+  it('uploads a selected review image before submitting the review with the returned short URL', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const file = new File(['image'], 'review.png', { type: 'image/png' })
+    const component = wrapper.vm as unknown as {
+      handleImageChange: (file: { raw: File }) => void
+    }
+    component.handleImageChange({ raw: file })
+    await flushPromises()
+
+    await wrapper.find('textarea').setValue('  带图评论  ')
+    await wrapper.findAll('button').find(button => button.text() === '提交评论')?.trigger('click')
+    await flushPromises()
+
+    expect(marketApi.uploadReviewImage).toHaveBeenCalledWith(file)
+    expect(marketApi.postRuleReview).toHaveBeenCalledWith('builtin-war-rule', {
+      rating: 5,
+      content: '带图评论',
+      imageUrl: '/static/review-images/review-2.png',
+    })
+  })
+
+  it('stops review submission when the selected image upload fails', async () => {
+    vi.mocked(marketApi.uploadReviewImage).mockResolvedValueOnce({
+      success: false,
+      message: '评论图片不能超过 2MB',
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    const file = new File(['image'], 'review.png', { type: 'image/png' })
+    const component = wrapper.vm as unknown as {
+      handleImageChange: (file: { raw: File }) => void
+    }
+    component.handleImageChange({ raw: file })
+    await flushPromises()
+
+    await wrapper.find('textarea').setValue('带图评论')
+    await wrapper.findAll('button').find(button => button.text() === '提交评论')?.trigger('click')
+    await flushPromises()
+
+    expect(marketApi.uploadReviewImage).toHaveBeenCalledWith(file)
+    expect(marketApi.postRuleReview).not.toHaveBeenCalled()
+    expect(ElMessage.error).toHaveBeenCalledWith('评论图片不能超过 2MB')
+  })
+
+  it('rejects non-image files before review image preview/upload state is set', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const file = new File(['not-image'], 'notes.txt', { type: 'text/plain' })
+    const component = wrapper.vm as unknown as {
+      handleImageChange: (file: { raw: File }) => void
+    }
+    component.handleImageChange({ raw: file })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('notes.txt')
+    expect(ElMessage.warning).toHaveBeenCalledWith('请上传图片文件')
   })
 
   it('shows a load error when rule detail is unavailable', async () => {

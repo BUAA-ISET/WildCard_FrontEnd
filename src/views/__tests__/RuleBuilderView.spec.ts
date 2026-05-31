@@ -428,5 +428,39 @@ describe('RuleBuilderView.vue', () => {
       expect(banner.text()).toContain('只读预览模式')
       expect(banner.text()).toContain('审核员')
     })
+
+    it('readonly 模式进入流程画布时把 readonly prop 传给 RuleFlowCanvas', async () => {
+      enterPreviewRoute()
+      adminGetDraftMock.mockResolvedValueOnce({
+        success: true,
+        data: {
+          id: 'd-preview',
+          name: 'Preview 规则',
+          playerCount: 3,
+          description: '',
+          status: 'pendingReview',
+          updatedAt: 0,
+          createdAt: 0,
+          design: emptyDesignPayload,
+        },
+      })
+      const wrapper = mount(RuleBuilderView, {
+        global: {
+          stubs: {
+            ...previewStubs,
+            'rule-flow-canvas': {
+              props: ['readonly'],
+              template: '<div class="flow-canvas" :data-readonly="String(readonly)"></div>',
+            },
+          },
+        },
+      })
+      await flushPromises()
+
+      await wrapper.find('.workspace-tab:nth-child(5)').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('.flow-canvas').attributes('data-readonly')).toBe('true')
+    })
   })
 })
