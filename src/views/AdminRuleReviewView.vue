@@ -101,6 +101,26 @@
         </template>
       </section>
     </div>
+
+    <el-dialog
+      v-model="previewVisible"
+      title="可视化预览"
+      width="92%"
+      top="3vh"
+      class="preview-dialog"
+      :close-on-click-modal="false"
+      :close-on-press-escape="true"
+      append-to-body
+      destroy-on-close
+      @close="closePreview"
+    >
+      <iframe
+        v-if="previewUrl"
+        :src="previewUrl"
+        class="preview-iframe"
+        title="规则可视化预览"
+      ></iframe>
+    </el-dialog>
   </div>
 </template>
 
@@ -118,6 +138,8 @@ const rejecting = ref(false)
 const drafts = ref<PendingReviewDraft[]>([])
 const selectedId = ref<string>('')
 const designVisible = ref(false)
+const previewVisible = ref(false)
+const previewUrl = ref('')
 
 const selectedDraft = computed(() =>
   drafts.value.find(draft => draft.draftId === selectedId.value) || null,
@@ -169,8 +191,13 @@ function selectDraft(draftId: string) {
  */
 function openVisualPreview() {
   if (!selectedDraft.value) return
-  const url = router.resolve(`/admin/rules-review/preview/${selectedDraft.value.draftId}`).href
-  window.open(url, '_blank', 'noopener,noreferrer')
+  previewUrl.value = router.resolve(`/admin/rules-review/preview/${selectedDraft.value.draftId}`).href
+  previewVisible.value = true
+}
+
+function closePreview() {
+  previewVisible.value = false
+  previewUrl.value = ''
 }
 
 async function loadPending() {
@@ -503,5 +530,18 @@ onMounted(() => {
   .pending-list {
     max-height: none;
   }
+}
+
+.preview-dialog :deep(.el-dialog__body) {
+  padding: 0;
+  height: calc(100vh - 12vh);
+  overflow: hidden;
+}
+
+.preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
 }
 </style>
