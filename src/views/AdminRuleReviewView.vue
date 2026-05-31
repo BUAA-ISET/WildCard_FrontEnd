@@ -532,9 +532,32 @@ onMounted(() => {
   }
 }
 
+.preview-dialog {
+  --dialog-header-height: 56px;
+}
+
+/* 撑满整个 dialog 容器：el-dialog 默认有 max-height ~75vh 限制，单写 body 高度
+ * 没用，iframe 被截到很窄一条。把 dialog 自身钉到 94vh，body flex:1 拿满。 */
+.preview-dialog :deep(.el-dialog) {
+  height: 94vh;
+  max-height: 94vh;
+  margin-top: 3vh !important;
+  margin-bottom: 3vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.preview-dialog :deep(.el-dialog__header) {
+  flex: 0 0 var(--dialog-header-height);
+  margin: 0;
+}
+
 .preview-dialog :deep(.el-dialog__body) {
+  flex: 1 1 auto;
   padding: 0;
-  height: calc(100vh - 12vh);
+  height: auto;
+  min-height: 0;
   overflow: hidden;
 }
 
