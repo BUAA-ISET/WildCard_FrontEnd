@@ -1,6 +1,6 @@
 <template>
-  <div :class="['main-layout', { 'auth-only-layout': !isLoggedIn }]" data-testid="app-shell">
-    <header v-if="isLoggedIn" class="top-header">
+  <div :class="['main-layout', { 'auth-only-layout': !isLoggedIn, 'preview-shell': isPreviewIframe }]" data-testid="app-shell">
+    <header v-if="isLoggedIn && !isPreviewIframe" class="top-header">
       <div class="header-logo">WildCard</div>
       <div class="header-nav">
         <div class="top-nav-item" @click="handleTeamIntro">团队介绍</div>
@@ -9,7 +9,7 @@
       </div>
     </header>
     <div class="main-body">
-      <aside v-if="isLoggedIn" class="sidebar">
+      <aside v-if="isLoggedIn && !isPreviewIframe" class="sidebar">
         <nav class="nav">
           <router-link to="/" class="nav-item" exact-active-class="active">
             <el-icon><House /></el-icon>
@@ -59,13 +59,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
 import { resolveAvatarUrl } from '../utils/avatar'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const { isLoggedIn, username, email, avatar } = storeToRefs(userStore)
+
+// 审核员预览路由（嵌在 dialog 同源 iframe 里）应该藏掉外层应用 chrome，
+// 让 RuleBuilder 占满 iframe 全部高度；否则顶栏 + 侧栏会挤压画布。
+const isPreviewIframe = computed(() =>
+  Boolean(route?.path?.startsWith('/admin/rules-review/preview/')),
+)
 
 const displayAvatar = computed(() => resolveAvatarUrl(avatar.value))
 const displayUsername = computed(() => username.value || '未登录')
