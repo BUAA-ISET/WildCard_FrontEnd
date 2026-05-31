@@ -17,6 +17,7 @@ vi.mock('../../api/config', () => ({
 }))
 
 const resolveMock = vi.fn((path: string) => ({ href: path }))
+const pushMock = vi.fn()
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -24,7 +25,7 @@ vi.mock('vue-router', async () => {
     ...actual,
     useRouter: () => ({
       resolve: resolveMock,
-      push: vi.fn(),
+      push: pushMock,
       replace: vi.fn(),
     }),
   }
@@ -218,8 +219,8 @@ describe('AdminRuleReviewView', () => {
     expect(ElMessage.error).toHaveBeenCalledWith('权限不足')
   })
 
-  it('点击"可视化预览"按钮弹出同源 iframe dialog', async () => {
-    resolveMock.mockClear()
+  it('点击"可视化预览"按钮跳转到只读预览路由', async () => {
+    pushMock.mockClear()
 
     const wrapper = mountView()
     await flushPromises()
@@ -233,11 +234,6 @@ describe('AdminRuleReviewView', () => {
     expect(previewBtn).toBeTruthy()
     await previewBtn!.trigger('click')
 
-    // dialog 走 router.resolve 拼 URL，确认调到
-    expect(resolveMock).toHaveBeenCalledWith('/admin/rules-review/preview/d-alpha')
-    // 内部 ref 应已更新（vm 暴露 setup 返回值）
-    const vm = wrapper.vm as unknown as { previewVisible: boolean; previewUrl: string }
-    expect(vm.previewVisible).toBe(true)
-    expect(vm.previewUrl).toBe('/admin/rules-review/preview/d-alpha')
+    expect(pushMock).toHaveBeenCalledWith('/admin/rules-review/preview/d-alpha')
   })
 })

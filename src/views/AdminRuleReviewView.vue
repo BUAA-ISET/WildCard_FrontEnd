@@ -101,25 +101,6 @@
         </template>
       </section>
     </div>
-
-    <el-dialog
-      v-model="previewVisible"
-      title="可视化预览"
-      fullscreen
-      class="preview-dialog"
-      :close-on-click-modal="false"
-      :close-on-press-escape="true"
-      append-to-body
-      destroy-on-close
-      @close="closePreview"
-    >
-      <iframe
-        v-if="previewUrl"
-        :src="previewUrl"
-        class="preview-iframe"
-        title="规则可视化预览"
-      ></iframe>
-    </el-dialog>
   </div>
 </template>
 
@@ -137,8 +118,6 @@ const rejecting = ref(false)
 const drafts = ref<PendingReviewDraft[]>([])
 const selectedId = ref<string>('')
 const designVisible = ref(false)
-const previewVisible = ref(false)
-const previewUrl = ref('')
 
 const selectedDraft = computed(() =>
   drafts.value.find(draft => draft.draftId === selectedId.value) || null,
@@ -184,19 +163,14 @@ function selectDraft(draftId: string) {
 }
 
 /**
- * 在新标签页打开 RuleBuilderView 的只读预览。
- * 用 router.resolve 而非直接拼字符串，方便测试用 mock router.resolve 验证调用，并保留 history mode 的 base。
- * window.open 用 noopener,noreferrer 切断 opener，新窗不能 navigate 回这里。
+ * 当前 tab 跳转到 RuleBuilder 的只读预览路由。
+ * 之前尝试过 window.open 新窗（sessionStorage 不跨 tab）和 dialog + 同源 iframe
+ * （内嵌时高度链塌成 0），都不顺；改回最朴素的 router.push，
+ * 看完点页面里的「返回审核面板」按钮回来。
  */
 function openVisualPreview() {
   if (!selectedDraft.value) return
-  previewUrl.value = router.resolve(`/admin/rules-review/preview/${selectedDraft.value.draftId}`).href
-  previewVisible.value = true
-}
-
-function closePreview() {
-  previewVisible.value = false
-  previewUrl.value = ''
+  void router.push(`/admin/rules-review/preview/${selectedDraft.value.draftId}`)
 }
 
 async function loadPending() {
@@ -529,27 +503,5 @@ onMounted(() => {
   .pending-list {
     max-height: none;
   }
-}
-
-/* 用 fullscreen prop 后 dialog 自身 height:100% 且去除 max-height；
- * 仍需让 body 拿满去掉 padding，iframe 才能贴边占满。 */
-.preview-dialog :deep(.el-dialog) {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.preview-dialog :deep(.el-dialog__body) {
-  flex: 1 1 auto;
-  padding: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.preview-iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
 }
 </style>
