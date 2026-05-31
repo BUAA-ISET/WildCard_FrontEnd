@@ -218,8 +218,7 @@ describe('AdminRuleReviewView', () => {
     expect(ElMessage.error).toHaveBeenCalledWith('权限不足')
   })
 
-  it('点击"可视化预览"按钮在新窗打开 RuleBuilderView 只读预览', async () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null as never)
+  it('点击"可视化预览"按钮弹出同源 iframe dialog', async () => {
     resolveMock.mockClear()
 
     const wrapper = mountView()
@@ -234,14 +233,11 @@ describe('AdminRuleReviewView', () => {
     expect(previewBtn).toBeTruthy()
     await previewBtn!.trigger('click')
 
+    // dialog 走 router.resolve 拼 URL，确认调到
     expect(resolveMock).toHaveBeenCalledWith('/admin/rules-review/preview/d-alpha')
-    expect(openSpy).toHaveBeenCalledTimes(1)
-    expect(openSpy).toHaveBeenCalledWith(
-      '/admin/rules-review/preview/d-alpha',
-      '_blank',
-      'noopener,noreferrer',
-    )
-
-    openSpy.mockRestore()
+    // 内部 ref 应已更新（vm 暴露 setup 返回值）
+    const vm = wrapper.vm as unknown as { previewVisible: boolean; previewUrl: string }
+    expect(vm.previewVisible).toBe(true)
+    expect(vm.previewUrl).toBe('/admin/rules-review/preview/d-alpha')
   })
 })
