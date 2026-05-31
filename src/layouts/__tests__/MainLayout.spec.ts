@@ -4,6 +4,8 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useUserStore } from '../../stores/userStore'
 import MainLayout from '../MainLayout.vue'
 
+const pushMock = vi.fn()
+
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
 
@@ -11,6 +13,7 @@ vi.mock('vue-router', async () => {
     ...actual,
     useRouter: () => ({
       resolve: (path: string) => ({ href: path }),
+      push: pushMock,
     }),
   }
 })
@@ -308,6 +311,55 @@ describe('MainLayout', () => {
       const wrapper = mount(MainLayout, { global: { stubs: sharedStubs } })
 
       expect(wrapper.text()).not.toContain('规则审核')
+    })
+  })
+
+  describe('顶栏链接跳转', () => {
+    // 历史 bug：早先 handleTeamIntro/Contact/Help 用 window.open 新标签打开，
+    // 新 tab sessionStorage 是空的，token 拿不到被守卫踢回登录页。fix #154
+    // 改成 router.push 当前 tab 跳转。这里固化"3 个按钮 = 3 个 router.push"行为，
+    // 防止有人再改回 window.open。
+    it('登录后点击 团队介绍 / 联系我们 / 帮助中心 走 router.push 到对应路径', async () => {
+      const userStore = useUserStore()
+      userStore.setUser({
+        id: '1',
+        username: 'testuser',
+        email: 't@m.com',
+        avatar: '',
+      })
+      pushMock.mockClear()
+
+      const wrapper = mount(MainLayout, {
+        global: {
+          stubs: {
+            'router-link': RouterLinkStub,
+            'router-view': true,
+            'el-icon': true,
+            House: true,
+            EditPen: true,
+            User: true,
+            Shop: true,
+            Brush: true,
+            VideoPlay: true,
+            Document: true,
+          },
+        },
+      })
+
+      const items = wrapper.findAll('.top-nav-item')
+      const map: Record<string, string> = {
+        团队介绍: '/teaminfo/about',
+        联系我们: '/teaminfo/contact',
+        帮助中心: '/teaminfo/help',
+      }
+      for (const item of items) {
+        const text = item.text()
+        const expectedPath = map[text]
+        if (!expectedPath) continue
+        await item.trigger('click')
+        expect(pushMock).toHaveBeenLastCalledWith(expectedPath)
+      }
+      expect(pushMock).toHaveBeenCalledTimes(Object.keys(map).length)
     })
   })
 })
