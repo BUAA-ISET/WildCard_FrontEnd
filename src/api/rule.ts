@@ -126,7 +126,7 @@ export const ruleApi = {
     try {
       const response = await fetch(url, {
         method: 'POST',
-        credentials: 'include',
+        credentials: 'omit',
         headers,
         body: form,
       })

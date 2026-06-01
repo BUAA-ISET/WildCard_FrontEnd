@@ -71,7 +71,7 @@ export async function apiRequest<T = any>(
     try {
         response = await fetch(url, {
             method,
-            credentials: 'include',
+            credentials: 'omit',
             headers: requestHeaders,
             body: body ? JSON.stringify(body) : undefined,
         })

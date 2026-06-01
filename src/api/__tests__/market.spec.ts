@@ -93,7 +93,7 @@ describe('marketApi', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('http://test/api/rules/reviews/images')
     expect(init.method).toBe('POST')
-    expect(init.credentials).toBe('include')
+    expect(init.credentials).toBe('omit')
     expect(init.headers).toEqual({ Authorization: 'Bearer token-123' })
     expect(init.body).toBeInstanceOf(FormData)
     expect(result).toEqual({ success: true, data: { imageUrl: '/static/review-images/r1.png' } })
