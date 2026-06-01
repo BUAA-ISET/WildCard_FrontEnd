@@ -19,6 +19,9 @@
             <el-icon><EditPen /></el-icon>
             <span>创作中心</span>
           </router-link>
+          <router-link to="/match-history" class="nav-item" exact-active-class="active">
+            <el-icon><Clock /></el-icon>
+            <span>历史对局</span>
           <router-link to="/rule-market" class="nav-item" exact-active-class="active">
             <el-icon><Shop /></el-icon>
             <span>规则市场</span>

@@ -58,6 +58,11 @@ export const API_CONFIG = {
         },
         game: {
             getCurrent: '/api/games/current',
+        },
+        replay: {
+            history: '/api/replays/history',
+            detail: (replayId: string) => `/api/replays/${encodeURIComponent(replayId)}`,
+            createFromSnapshot: '/api/replays/from-snapshot',
         }
     }
 }
