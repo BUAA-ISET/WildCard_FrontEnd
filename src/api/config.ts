@@ -42,6 +42,11 @@ export const API_CONFIG = {
         },
         game: {
             getCurrent: '/api/games/current',
+        },
+        replay: {
+            history: '/api/replays/history',
+            detail: (replayId: string) => `/api/replays/${encodeURIComponent(replayId)}`,
+            createFromSnapshot: '/api/replays/from-snapshot',
         }
     }
 }
@@ -54,4 +59,3 @@ export const shouldUseMockApi = (): boolean => API_CONFIG.USE_MOCK
 export const shouldUseUserMockApi = (): boolean => API_CONFIG.userUseMock ?? API_CONFIG.USE_MOCK
 export const shouldUseRoomMockApi = (): boolean => API_CONFIG.roomUseMock ?? API_CONFIG.USE_MOCK
 export const shouldUseGameMockApi = (): boolean => API_CONFIG.gameUseMock ?? API_CONFIG.USE_MOCK
-

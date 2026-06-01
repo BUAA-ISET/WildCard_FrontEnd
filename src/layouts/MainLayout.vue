@@ -19,6 +19,10 @@
             <el-icon><EditPen /></el-icon>
             <span>创作中心</span>
           </router-link>
+          <router-link to="/match-history" class="nav-item" exact-active-class="active">
+            <el-icon><Clock /></el-icon>
+            <span>历史对局</span>
+          </router-link>
           <router-link to="/user-info" class="nav-item" exact-active-class="active">
             <el-icon><User /></el-icon>
             <span>用户中心</span>

@@ -93,6 +93,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { gameApi, type GameSnapshot } from '../api/game'
 import { roomApi } from '../api/room'
+import { replayApi } from '../api/replay'
 
 type CardStyle = {
   fontFamily: string
@@ -268,6 +269,7 @@ async function refreshSnapshot() {
     result.data?.handCards.some((card) => card.id === cardId)
   ))
   if (result.data.status === 'finished') {
+    replayApi.recordFinishedSnapshot(result.data)
     stopPolling()
   }
 }
@@ -314,6 +316,7 @@ async function playSelectedCards() {
   }
 
   snapshot.value = result.data
+  replayApi.recordFinishedSnapshot(result.data)
   selectedCardIds.value = []
 }
 
@@ -332,6 +335,7 @@ async function skipTurn() {
   }
 
   snapshot.value = result.data
+  replayApi.recordFinishedSnapshot(result.data)
   selectedCardIds.value = []
 }
 
