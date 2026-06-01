@@ -4,6 +4,7 @@ import InfoLayout from '../layouts/InfoLayout.vue'
 import HomeView from '../views/HomeView.vue'
 import About from '../views/About.vue'
 import Contact from '../views/Contact.vue'
+import HelpView from '../views/HelpView.vue'
 import CardStyleView from '../views/CardStyleView.vue'
 import BattleView from '../views/BattleView.vue'
 import ReadyRoomView from '../views/ReadyRoomView.vue'
@@ -14,6 +15,13 @@ import CreationCenterView from '../views/CreationCenterView.vue'
 import RuleBuilderView from '../views/RuleBuilderView.vue'
 import MatchHistoryView from '../views/MatchHistoryView.vue'
 import ReplayView from '../views/ReplayView.vue'
+import PublishFormView from '../views/PublishFormView.vue'
+import RuleMarketHomeView from '../views/RuleMarketHomeView.vue'
+import RuleMarketDetailView from '../views/RuleMarketDetailView.vue'
+import RuleDeveloperDetailView from '../views/RuleDeveloperDetailView.vue'
+import RuleRoomSearchView from '../views/RuleRoomSearchView.vue'
+import AdminRuleReviewView from '../views/AdminRuleReviewView.vue'
+import { ElMessage } from 'element-plus'
 import { roomApi, getRoomEntryPath } from '../api/room'
 import { useUserStore } from '../stores/userStore'
 
@@ -29,7 +37,19 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'rule-market',
-        component: { template: '<div>规则市场</div>' }
+        component: RuleMarketHomeView
+      },
+      {
+        path: 'rule-market/developer/:developerId',
+        component: RuleDeveloperDetailView
+      },
+      {
+        path: 'rule-market/:ruleId/rooms',
+        component: RuleRoomSearchView
+      },
+      {
+        path: 'rule-market/:ruleId',
+        component: RuleMarketDetailView
       },
       {
         path: 'card-style',
@@ -52,6 +72,10 @@ const routes: RouteRecordRaw[] = [
         component: RuleBuilderView
       },
       {
+        path: 'creation-center/:draftId/publish',
+        component: PublishFormView
+      },
+      {
         path: 'match-history',
         component: MatchHistoryView
       },
@@ -66,6 +90,16 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'admin-panel',
         component: { template: '<div>管理面板</div>' }
+      },
+      {
+        path: 'admin/rules-review',
+        component: AdminRuleReviewView
+      },
+      {
+        // 审核员的可视化预览模式：与作者编辑共用 RuleBuilderView 组件，由组件内部根据 route.path 切到 readonly。
+        // 也走 /admin/* 守卫，非 admin 会被自动拦回首页。
+        path: 'admin/rules-review/preview/:draftId',
+        component: RuleBuilderView
       },
       {
         path: 'create-room',
@@ -99,7 +133,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'help',
-        component: { template: '<div>帮助中心</div>' }
+        component: HelpView
       }
     ]
   }
@@ -120,9 +154,21 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const userStore = useUserStore()
   const publicPaths = new Set(['/user-info'])
+  // 团队介绍 / 联系我们 / 帮助中心 三页是公开静态页，谁都可看。
+  // 这里特别需要：当用户在已登录 tab 里 window.open('/teaminfo/...') 打开新窗时，
+  // 新 tab 的 sessionStorage 为空、读不到 token，beforeEach 会把它误识为未登录
+  // 然后强制重定向到 /user-info，导致用户感受是「点了顶部链接，没跳转」。
+  const isPublicPath = publicPaths.has(to.path) || to.path.startsWith('/teaminfo/')
 
-  if (!userStore.isLoggedIn && !publicPaths.has(to.path)) {
+  if (!userStore.isLoggedIn && !isPublicPath) {
     return { path: '/user-info' }
+  }
+
+  // /admin/* 是审核员专属，非 admin 进入时直接拦回首页并提示。
+  // 注意要放在登录检查之后：未登录用户已经被踢去 /user-info 了。
+  if (to.path.startsWith('/admin/') && !userStore.isAdmin) {
+    ElMessage.error('需要管理员权限')
+    return { path: '/' }
   }
 
   if (userStore.isLoggedIn && to.path === '/user-info') {

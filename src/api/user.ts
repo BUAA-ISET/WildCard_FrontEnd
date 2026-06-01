@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { apiGet, apiPost, apiPut } from './request'
-import { API_CONFIG, shouldUseMockApi, shouldUseUserMockApi } from './config'
+import { API_CONFIG, getApiUrl, shouldUseMockApi, shouldUseUserMockApi } from './config'
 import { AUTH_TOKEN_STORAGE_KEY, scopedStorageKey, USER_STORAGE_KEY } from '../utils/storageNamespace'
 
 export interface User {
@@ -9,9 +9,11 @@ export interface User {
   email: string
   avatar: string
   token?: string
+  role?: string
 }
 
 export interface LoginParams {
+  // accepts either an email (contains '@') or a username; field name kept for backend wire compatibility
   email: string
   password: string
 }
@@ -28,8 +30,19 @@ export interface UpdatePasswordParams {
   newPassword: string
 }
 
+export interface UpdateEmailParams {
+  newEmail: string
+  verificationCode: string
+}
+
 export interface SendVerificationCodeParams {
   email: string
+}
+
+export interface PasswordResetParams {
+  email: string
+  verificationCode: string
+  newPassword: string
 }
 
 type MockAccount = User & {
@@ -54,6 +67,7 @@ type BackendUser = {
   email: string
   avatar?: string
   token?: string
+  role?: string
 }
 
 const VERIFICATION_CODE_TTL = 5 * 60 * 1000
@@ -206,6 +220,7 @@ function normalizeBackendUser(user: BackendUser | null | undefined): User | null
     email: user.email,
     avatar: user.avatar || '',
     token: user.token,
+    role: user.role,
   }
 }
 
@@ -439,6 +454,149 @@ export const userApi = {
         account.password = params.newPassword
         saveMockAccountsToStorage()
         return { success: true, message: '密码更新成功' }
+      },
+    })
+  },
+
+  async updateEmail(params: UpdateEmailParams): Promise<ApiResult<User>> {
+    return apiPut(API_CONFIG.endpoints.user.updateEmail, params, {
+      useMock: shouldUseUserMockApi(),
+      mockDelay: 300,
+      mockFn: () => {
+        const newEmail = normalizeEmail(params.newEmail)
+        if (!newEmail || !params.verificationCode.trim()) {
+          return { success: false, message: '请填写新邮箱和验证码' }
+        }
+        if (!currentUser.value) {
+          return { success: false, message: '未登录' }
+        }
+        if (currentUser.value.email === newEmail) {
+          return { success: false, message: '新邮箱与当前邮箱相同' }
+        }
+        const verificationResult = validateVerificationCode(newEmail, params.verificationCode)
+        if (!verificationResult.success) {
+          return verificationResult
+        }
+        if (mockAccounts.has(newEmail)) {
+          return { success: false, message: '该邮箱已被占用' }
+        }
+        const oldEmail = currentUser.value.email
+        const account = mockAccounts.get(oldEmail)
+        if (account) {
+          mockAccounts.delete(oldEmail)
+          account.email = newEmail
+          mockAccounts.set(newEmail, account)
+          saveMockAccountsToStorage()
+        }
+        currentUser.value = { ...currentUser.value, email: newEmail }
+        saveUserToStorage(currentUser.value)
+        return { success: true, data: currentUser.value }
+      },
+    })
+  },
+
+  async uploadAvatar(file: File): Promise<ApiResult<User>> {
+    if (shouldUseUserMockApi()) {
+      if (!currentUser.value) {
+        return { success: false, message: '未登录' }
+      }
+      const reader = new FileReader()
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(file)
+      })
+      currentUser.value = { ...currentUser.value, avatar: dataUrl }
+      saveUserToStorage(currentUser.value)
+      return { success: true, data: currentUser.value }
+    }
+
+    const form = new FormData()
+    form.append('file', file)
+    const url = getApiUrl(API_CONFIG.endpoints.user.updateAvatar)
+    const token = (() => {
+      if (typeof window === 'undefined') return ''
+      try {
+        return (
+          window.sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ||
+          window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ||
+          ''
+        )
+      } catch {
+        return ''
+      }
+    })()
+    const headers: Record<string, string> = {}
+    if (token) headers.Authorization = `Bearer ${token}`
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: form,
+      })
+      const text = await response.text()
+      const result = text ? JSON.parse(text) : {}
+      if (!response.ok) {
+        return {
+          success: false,
+          message:
+            (result as { message?: string }).message ||
+            `Request failed with status ${response.status}`,
+        }
+      }
+      return result as ApiResult<User>
+    } catch (e) {
+      return {
+        success: false,
+        message: e instanceof Error ? e.message : '网络请求失败',
+      }
+    }
+  },
+
+  async sendPasswordResetCode(params: SendVerificationCodeParams): Promise<ApiResult> {
+    return apiPost(API_CONFIG.endpoints.user.passwordResetCode, params, {
+      useMock: shouldUseUserMockApi(),
+      mockDelay: 300,
+      mockFn: () => {
+        const email = normalizeEmail(params.email)
+        if (!email) {
+          return { success: false, message: '请输入邮箱' }
+        }
+        if (!mockAccounts.has(email)) {
+          return { success: false, message: '该邮箱未注册' }
+        }
+        const code = Math.floor(100000 + Math.random() * 900000).toString()
+        const record: VerificationRecord = {
+          code,
+          expiresAt: Date.now() + VERIFICATION_CODE_TTL,
+        }
+        verificationCodes.set(email, record)
+        return { success: true, message: '验证码已生成', debugCode: code }
+      },
+    })
+  },
+
+  async resetPassword(params: PasswordResetParams): Promise<ApiResult> {
+    return apiPost(API_CONFIG.endpoints.user.passwordReset, params, {
+      useMock: shouldUseUserMockApi(),
+      mockDelay: 300,
+      mockFn: () => {
+        const email = normalizeEmail(params.email)
+        if (!email || !params.verificationCode.trim() || !params.newPassword) {
+          return { success: false, message: '请填写完整' }
+        }
+        const account = mockAccounts.get(email)
+        if (!account) {
+          return { success: false, message: '该邮箱未注册' }
+        }
+        const verificationResult = validateVerificationCode(email, params.verificationCode)
+        if (!verificationResult.success) {
+          return verificationResult
+        }
+        account.password = params.newPassword
+        saveMockAccountsToStorage()
+        return { success: true, message: '密码已重置' }
       },
     })
   },

@@ -40,8 +40,12 @@ export const useUserStore = defineStore('user', {
       email: storedUser?.email ?? '',
       username: storedUser?.username ?? '',
       avatar: storedUser?.avatar ?? '',
+      role: storedUser?.role ?? 'user',
       isLoggedIn: storedUser !== null,
     }
+  },
+  getters: {
+    isAdmin: (state) => state.role === 'admin',
   },
   actions: {
     applyUser(user: User | null) {
@@ -50,6 +54,7 @@ export const useUserStore = defineStore('user', {
         this.email = ''
         this.username = ''
         this.avatar = ''
+        this.role = 'user'
         this.isLoggedIn = false
         saveUserToStorage(null)
         return
@@ -59,6 +64,7 @@ export const useUserStore = defineStore('user', {
       this.email = user.email
       this.username = user.username
       this.avatar = user.avatar
+      this.role = user.role ?? 'user'
       this.isLoggedIn = true
       saveUserToStorage(user)
     },
@@ -67,7 +73,7 @@ export const useUserStore = defineStore('user', {
       const trimmedPassword = password.trim()
 
       if (!trimmedEmail || !trimmedPassword) {
-        return { success: false, message: '请输入邮箱和密码' }
+        return { success: false, message: '请输入邮箱或用户名以及密码' }
       }
 
       const result = await userApi.login({
@@ -106,6 +112,32 @@ export const useUserStore = defineStore('user', {
     },
     setUser(user: User | null) {
       this.applyUser(user)
+    },
+    async updateEmail({ newEmail, verificationCode }: { newEmail: string; verificationCode: string }) {
+      const trimmedEmail = newEmail.trim()
+      const trimmedCode = verificationCode.trim()
+
+      if (!trimmedEmail || !trimmedCode) {
+        return { success: false, message: '请填写新邮箱和验证码' }
+      }
+
+      const result = await userApi.updateEmail({
+        newEmail: trimmedEmail,
+        verificationCode: trimmedCode,
+      })
+
+      if (result.success && result.data) {
+        this.applyUser(result.data)
+      }
+
+      return result
+    },
+    async uploadAvatar(file: File) {
+      const result = await userApi.uploadAvatar(file)
+      if (result.success && result.data) {
+        this.applyUser(result.data)
+      }
+      return result
     },
     async logout() {
       await userApi.logout()

@@ -1,11 +1,14 @@
 <template>
   <div class="main-layout">
     <header class="top-header">
-      <div class="header-logo">WildCard</div>
+      <div class="header-logo" role="button" tabindex="0" @click="goHome" @keydown.enter.prevent="goHome">WildCard</div>
       <div class="header-nav">
         <div class="top-nav-item" @click="handleTeamIntro">团队介绍</div>
         <div class="top-nav-item" @click="handleContact">联系我们</div>
         <div class="top-nav-item" @click="handleHelp">帮助中心</div>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="back-btn" @click="goHome">← 返回主页</button>
       </div>
     </header>
     <div class="main-body">
@@ -23,21 +26,20 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
+const goHome = () => {
+  void router.push('/');
+};
+
 const handleTeamIntro = () => {
-  openRouteInNewWindow('/teaminfo/about');
+  void router.push('/teaminfo/about');
 };
 
 const handleContact = () => {
-  openRouteInNewWindow('/teaminfo/contact');
+  void router.push('/teaminfo/contact');
 };
 
 const handleHelp = () => {
-  openRouteInNewWindow('/teaminfo/help');
-};
-
-const openRouteInNewWindow = (path: string) => {
-  const routeUrl = router.resolve(path).href;
-  window.open(routeUrl, '_blank', 'noopener,noreferrer');
+  void router.push('/teaminfo/help');
 };
 </script>
 
@@ -75,6 +77,12 @@ const openRouteInNewWindow = (path: string) => {
   color: #444;
   grid-column: 1;
   text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+
+.header-logo:hover {
+  color: #4a3aa3;
 }
 
 .header-nav {
@@ -83,6 +91,29 @@ const openRouteInNewWindow = (path: string) => {
   justify-content: center;
   gap: 24px;
   grid-column: 2;
+}
+
+.header-actions {
+  grid-column: 3;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.back-btn {
+  border: 1px solid #d9def0;
+  background: #fff;
+  color: #4a3aa3;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.back-btn:hover {
+  background: #ece6fa;
+  border-color: #4a3aa3;
 }
 
 .top-nav-item {

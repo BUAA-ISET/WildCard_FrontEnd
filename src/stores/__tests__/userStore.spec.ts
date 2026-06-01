@@ -78,6 +78,41 @@ describe('userStore', () => {
       expect(result.success).toBe(false)
       expect(store.isLoggedIn).toBe(false)
     })
+
+    it('使用用户名（无 @）也能调用 login，传递给后端的 email 字段保持原值', async () => {
+      vi.mocked(userApi.login).mockResolvedValue({
+        success: true,
+        data: {
+          id: '2',
+          username: 'tjydemo',
+          email: 'tjydemo@example.com',
+          avatar: '',
+        },
+      })
+
+      const store = useUserStore()
+
+      const result = await store.login({
+        email: 'tjydemo',
+        password: 'secret',
+      })
+
+      expect(result.success).toBe(true)
+      expect(store.isLoggedIn).toBe(true)
+      expect(vi.mocked(userApi.login)).toHaveBeenCalledWith({
+        email: 'tjydemo',
+        password: 'secret',
+      })
+    })
+
+    it('空凭据时返回包含"邮箱或用户名"的提示', async () => {
+      const store = useUserStore()
+
+      const result = await store.login({ email: '', password: '' })
+
+      expect(result.success).toBe(false)
+      expect(result.message).toContain('邮箱或用户名')
+    })
   })
 
   describe('注册功能', () => {
@@ -344,6 +379,73 @@ describe('userStore', () => {
       expect(store.email).toBe('')
       expect(store.username).toBe('')
       expect(store.avatar).toBe('')
+    })
+  })
+
+  describe('role 与 isAdmin', () => {
+    it('未登录时 role 默认为 user，isAdmin 为 false', () => {
+      const store = useUserStore()
+      expect(store.role).toBe('user')
+      expect(store.isAdmin).toBe(false)
+    })
+
+    it('applyUser 写入新 role，并影响 isAdmin', () => {
+      const store = useUserStore()
+      store.applyUser({
+        id: '1',
+        username: 'admin',
+        email: 'admin@test.com',
+        avatar: '',
+        role: 'admin',
+      })
+      expect(store.role).toBe('admin')
+      expect(store.isAdmin).toBe(true)
+    })
+
+    it('未携带 role 的用户回退为 user', () => {
+      const store = useUserStore()
+      store.applyUser({
+        id: '2',
+        username: 'normal',
+        email: 'normal@test.com',
+        avatar: '',
+      })
+      expect(store.role).toBe('user')
+      expect(store.isAdmin).toBe(false)
+    })
+
+    it('applyUser(null) 把 role 重置为 user', () => {
+      const store = useUserStore()
+      store.applyUser({
+        id: '1',
+        username: 'admin',
+        email: 'admin@test.com',
+        avatar: '',
+        role: 'admin',
+      })
+      expect(store.isAdmin).toBe(true)
+      store.applyUser(null)
+      expect(store.role).toBe('user')
+      expect(store.isAdmin).toBe(false)
+    })
+
+    it('fetchCurrentUser 把 BE 返回的 role 透传到 store', async () => {
+      vi.mocked(userApi.getCurrentUser).mockResolvedValue({
+        success: true,
+        data: {
+          id: '9',
+          username: 'auditor',
+          email: 'auditor@test.com',
+          avatar: '',
+          role: 'admin',
+        },
+      })
+
+      const store = useUserStore()
+      await store.fetchCurrentUser()
+
+      expect(store.role).toBe('admin')
+      expect(store.isAdmin).toBe(true)
     })
   })
 })

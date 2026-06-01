@@ -41,8 +41,8 @@ describe('HomeView', () => {
     })
 
     expect(wrapper.find('.main-logo').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Make your own rule!')
-    expect(wrapper.text()).toContain('Unleash your imagination')
+    expect(wrapper.text()).toContain('创造属于你的规则')
+    expect(wrapper.text()).toContain('释放你的想象力')
   })
 
   it('shows a continue room action when the player is still in a room', async () => {
@@ -71,7 +71,7 @@ describe('HomeView', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('CONTINUE ROOM')
+    expect(wrapper.text()).toContain('返回房间')
   })
 
   it('navigates back into the active room from the continue action', async () => {

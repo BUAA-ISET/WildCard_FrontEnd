@@ -1,0 +1,31 @@
+name: Deploy to Server on Tag Push
+
+# 触发条件：当推送以 'v' 开头的 tag 时触发，只推送相应的版本
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    name: Pull latest code to Ubuntu Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute SSH commands on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          # 以下参数均通过 GitHub Secrets 隐式调用，保护服务器信息安全
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_KEY }}
+          port: 22 # 如果没有配置端口secret，默认使用22
+          
+          script: |
+            echo "========== 开始更新前端项目 (WildCard_FrontEnd) =========="
+            cd /home/ubuntu/frontend/WildCard_FrontEnd
+            # 确保在 main 分支上并拉取最新代码及 tags
+            git checkout main
+            git pull
+    
+            echo "========== 前端代码拉取完成！ =========="

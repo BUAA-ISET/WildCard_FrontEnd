@@ -2105,7 +2105,7 @@ const updateRawContent = (value: string | number) => {
 
 .panel-header p {
   margin: 0;
-  color: #777f8f;
+  color: #3a4050;
   font-size: 13px;
 }
 
@@ -2179,7 +2179,7 @@ const updateRawContent = (value: string | number) => {
 .embedded-index-summary span {
   display: block;
   margin-bottom: 4px;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -2206,7 +2206,7 @@ const updateRawContent = (value: string | number) => {
 .assignment-summary span,
 .assignment-summary small {
   display: block;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -2235,7 +2235,7 @@ const updateRawContent = (value: string | number) => {
 .operand-summary span {
   display: block;
   margin-bottom: 4px;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -2262,7 +2262,7 @@ const updateRawContent = (value: string | number) => {
 .logic-component-summary span {
   display: block;
   margin-bottom: 4px;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -2289,7 +2289,7 @@ const updateRawContent = (value: string | number) => {
 .return-value-summary span {
   display: block;
   margin-bottom: 4px;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 
@@ -2320,7 +2320,7 @@ const updateRawContent = (value: string | number) => {
   border: 1px dashed #c3cad8;
   border-radius: 8px;
   background: #f8f9fc;
-  color: #697386;
+  color: #3a4050;
   font-size: 13px;
 }
 
@@ -2422,7 +2422,7 @@ const updateRawContent = (value: string | number) => {
   border: 1px dashed #c3cad8;
   border-radius: 8px;
   background: #f8f9fc;
-  color: #697386;
+  color: #3a4050;
   font-size: 13px;
 }
 
@@ -2448,7 +2448,7 @@ const updateRawContent = (value: string | number) => {
 .comparison-summary span {
   display: block;
   margin-bottom: 4px;
-  color: #697386;
+  color: #3a4050;
   font-size: 12px;
 }
 

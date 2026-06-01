@@ -55,11 +55,28 @@
         <div>
           <strong>{{ rule.name || '未命名规则' }}</strong>
           <p>{{ rule.description || '暂无规则说明' }}</p>
+          <p
+            v-if="rule.status === 'rejected' && rule.rejectReason"
+            class="reject-reason"
+          >
+            驳回原因：{{ rule.rejectReason }}
+          </p>
         </div>
         <div class="rule-meta">
           <span>{{ rule.playerCount }} 人</span>
-          <span :class="['status-pill', rule.status]">{{ rule.status === 'published' ? '已发布' : '草稿' }}</span>
+          <span
+            :class="['status-pill', rule.status]"
+            :title="rule.status === 'rejected' && rule.rejectReason ? `驳回原因：${rule.rejectReason}` : undefined"
+          >{{ statusLabel(rule.status) }}</span>
           <span>{{ formatTime(rule.updatedAt) }}</span>
+          <button
+            type="button"
+            class="publish-action"
+            :disabled="rule.status === 'pendingReview'"
+            @click.stop="openPublishForm(rule.id, rule.status)"
+          >
+            {{ publishButtonLabel(rule.status) }}
+          </button>
           <button
             type="button"
             class="delete-action"
@@ -78,7 +95,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ruleApi, type RuleDraftSummary } from '../api/rule'
+import { ruleApi, type RuleDraftStatus, type RuleDraftSummary } from '../api/rule'
 
 const router = useRouter()
 const loading = ref(false)
@@ -89,6 +106,38 @@ const selectedRuleIds = ref<Set<string>>(new Set())
 const selectedCount = computed(() => selectedRuleIds.value.size)
 const allSelected = computed(() => rules.value.length > 0 && selectedRuleIds.value.size === rules.value.length)
 const someSelected = computed(() => selectedRuleIds.value.size > 0 && selectedRuleIds.value.size < rules.value.length)
+
+const STATUS_LABELS: Record<RuleDraftStatus, string> = {
+  draft: '草稿',
+  pendingReview: '审核中',
+  published: '已发布',
+  rejected: '已驳回',
+}
+
+function statusLabel(status: RuleDraftStatus | string | undefined) {
+  if (!status) return '草稿'
+  return STATUS_LABELS[status as RuleDraftStatus] ?? status
+}
+
+function publishButtonLabel(status: RuleDraftStatus | string | undefined) {
+  switch (status) {
+    case 'pendingReview':
+      return '审核中'
+    case 'published':
+      return '更新上架规则'
+    case 'rejected':
+      return '重新发布'
+    default:
+      return '发布规则'
+  }
+}
+
+function openPublishForm(draftId: string, status: RuleDraftStatus | string | undefined) {
+  if (status === 'pendingReview') {
+    return
+  }
+  void router.push(`/creation-center/${encodeURIComponent(draftId)}/publish`)
+}
 
 function formatTime(timestamp: number) {
   return new Date(timestamp).toLocaleString('zh-CN', {
@@ -257,7 +306,7 @@ onMounted(() => {
 
 .creation-header p {
   margin: 6px 0 0;
-  color: #687083;
+  color: #4a5063;
 }
 
 .header-actions {
@@ -282,7 +331,7 @@ onMounted(() => {
   border: 1px solid #dfe3ec;
   border-radius: 8px;
   background: #fff;
-  color: #687083;
+  color: #4a5063;
   font-size: 14px;
 }
 
@@ -328,14 +377,14 @@ onMounted(() => {
 
 .rule-row p {
   margin: 6px 0 0;
-  color: #687083;
+  color: #4a5063;
 }
 
 .rule-meta {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #687083;
+  color: #4a5063;
   font-size: 13px;
 }
 
@@ -343,12 +392,34 @@ onMounted(() => {
   padding: 4px 8px;
   border-radius: 999px;
   background: #eef1f7;
-  color: #4f5665;
+  color: #3a4050;
+}
+
+.status-pill.draft {
+  background: #eef1f7;
+  color: #3a4050;
+}
+
+.status-pill.pendingReview {
+  background: #e6f0ff;
+  color: #1a5fbf;
 }
 
 .status-pill.published {
   background: #e8f7ef;
   color: #16713a;
+}
+
+.status-pill.rejected {
+  background: #fdecec;
+  color: #b42323;
+  cursor: help;
+}
+
+.reject-reason {
+  margin: 6px 0 0;
+  color: #b42323;
+  font-size: 13px;
 }
 
 .delete-action {
@@ -360,6 +431,31 @@ onMounted(() => {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.publish-action {
+  border: 1px solid #4f63ff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #eef1ff;
+  color: #2d3fb5;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.publish-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  background: #eef1f7;
+  color: #6b7280;
+  border-color: #cbd0d8;
+}
+
+.publish-action:hover:not(:disabled),
+.publish-action:focus:not(:disabled) {
+  background: #dfe5ff;
+  outline: none;
 }
 
 .delete-action:disabled {
@@ -387,7 +483,7 @@ onMounted(() => {
 
 .empty-state p {
   margin: 0;
-  color: #687083;
+  color: #4a5063;
 }
 
 @media (max-width: 760px) {

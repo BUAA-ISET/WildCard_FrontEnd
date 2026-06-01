@@ -1,16 +1,34 @@
 <template>
-  <div class="rule-builder-page">
+  <div class="rule-builder-page" :class="{ 'readonly-mode': isReadonly }">
+    <div v-if="isReadonly" class="readonly-banner">
+      只读预览模式 · 由审核员打开
+    </div>
     <header class="builder-header">
       <div>
         <h1>规则构建</h1>
         <p>{{ design.info.name }} · {{ design.info.playerCount }} 人</p>
       </div>
       <div class="header-actions">
-        <el-button @click="backToCenter">返回列表</el-button>
-        <el-button @click="openJsonImport">导入 JSON</el-button>
+        <el-button @click="backToCenter">{{ isReadonly ? '返回审核面板' : '返回列表' }}</el-button>
+        <el-button @click="openTutorial">教程</el-button>
+        <el-button v-if="!isReadonly" @click="openJsonImport">导入 JSON</el-button>
         <el-button @click="showJson = !showJson">{{ showJson ? '隐藏 JSON' : '显示 JSON' }}</el-button>
-        <el-button type="primary" @click="saveDesign">保存草稿</el-button>
-        <el-button type="success" @click="uploadCompletedRule">完成并上传规则</el-button>
+        <el-button v-if="!isReadonly" type="primary" @click="saveDesign">保存草稿</el-button>
+        <el-button
+          v-if="!isReadonly"
+          type="success"
+          :disabled="publishButtonDisabled"
+          :loading="submitting"
+          @click="uploadCompletedRule"
+        >
+          {{ publishButtonLabel }}
+        </el-button>
+        <span
+          v-if="!isReadonly && draftStatus === 'rejected' && rejectReason"
+          class="reject-reason-inline"
+        >
+          驳回原因：{{ rejectReason }}
+        </span>
       </div>
     </header>
 
@@ -100,6 +118,7 @@
         :edges="activeGraph.edges"
         :selected-node-id="selectedNodeId"
         :is-fullscreen="isFlowFullscreen"
+        :readonly="isReadonly"
         @update:nodes="updateNodes"
         @update:edges="updateEdges"
         @select-node="selectedNodeId = $event"
@@ -149,6 +168,8 @@ import RuleJsonPreview from '../components/rule-builder/RuleJsonPreview.vue'
 import RulePropertyPanel from '../components/rule-builder/RulePropertyPanel.vue'
 import RuleStructurePanel from '../components/rule-builder/RuleStructurePanel.vue'
 import { ruleApi } from '../api'
+import { adminApi } from '../api/admin'
+import type { RuleDraftStatus } from '../api/rule'
 import type { ComponentTemplate, FlowGraphDraft, FlowScope, MethodDraft, RuleEdgeDraft, RuleNodeDraft } from '../types/ruleBuilder'
 import {
   cloneContent,
@@ -172,6 +193,9 @@ const route = useRoute()
 const router = useRouter()
 const design = reactive(createInitialDesign())
 const draftId = ref<string | null>(null)
+const draftStatus = ref<RuleDraftStatus>('draft')
+const rejectReason = ref<string>('')
+const submitting = ref(false)
 const activeWorkspace = ref<WorkspaceKey>('structure')
 const activeCardsetId = ref(design.cardsets[0].id)
 const activeComparisonId = ref(design.cardsetComparisons[0]?.id || null)
@@ -184,6 +208,13 @@ const jsonImportText = ref('')
 const flowCanvasRef = ref<InstanceType<typeof RuleFlowCanvas> | null>(null)
 const builderMainRef = ref<HTMLElement | null>(null)
 const isFlowFullscreen = ref(false)
+
+/**
+ * 审核员可视化预览：路由命中 /admin/rules-review/preview/:draftId 时进入只读模式。
+ * 只读下隐藏「保存草稿/提交审核/导入 JSON」并屏蔽画布编辑（见 RuleFlowCanvas 的 readonly prop +
+ * `.readonly-mode` 下 pointer-events: none），剩余 workspace tab / JSON 预览仍可浏览。
+ */
+const isReadonly = computed(() => route.path.startsWith('/admin/rules-review/preview/'))
 
 const workspaces: { key: WorkspaceKey; label: string }[] = [
   { key: 'structure', label: '基础与牌型' },
@@ -784,22 +815,32 @@ const loadDraftFromRoute = async () => {
   const routeDraftId = typeof route.params.draftId === 'string' ? route.params.draftId : ''
   if (!routeDraftId) {
     draftId.value = null
+    draftStatus.value = 'draft'
+    rejectReason.value = ''
     return
   }
 
   if (routeDraftId === 'new') {
     draftId.value = null
+    draftStatus.value = 'draft'
+    rejectReason.value = ''
     return
   }
 
-  const result = await ruleApi.getDraft(routeDraftId)
+  // 审核员预览走 adminApi（admin only 接口），作者编辑走 ruleApi（作者本人才能读）。
+  // 两者返回 schema 一致（RuleDraftDetail），后续 importRuleDesign 共用。
+  const result = isReadonly.value
+    ? await adminApi.getDraft(routeDraftId)
+    : await ruleApi.getDraft(routeDraftId)
   if (!result.success || !result.data) {
     ElMessage.error(result.message || '规则草稿加载失败')
-    await router.replace('/creation-center')
+    await router.replace(isReadonly.value ? '/admin/rules-review' : '/creation-center')
     return
   }
 
   draftId.value = result.data.id
+  draftStatus.value = (result.data.status as RuleDraftStatus) || 'draft'
+  rejectReason.value = result.data.rejectReason || ''
   applyDesign(importRuleDesign(result.data.design, {
     name: result.data.name,
     playerCount: result.data.playerCount,
@@ -870,30 +911,58 @@ const saveDesign = async () => {
 }
 
 const uploadCompletedRule = async () => {
+  if (draftStatus.value === 'pendingReview') {
+    ElMessage.info('规则正在审核中，请等待审核员处理')
+    return
+  }
+
   if (!validateBeforeSubmit() || !validateBeforePublish()) {
     return
   }
 
-  if (!draftId.value) {
-    ElMessage.warning('请先保存草稿，再完成并上传规则')
-    return
-  }
-
+  submitting.value = true
   const savedDraftId = await persistDraft()
   if (!savedDraftId) {
+    submitting.value = false
     return
   }
 
-  const result = await ruleApi.publishDraft(savedDraftId)
-  if (result.success) {
-    ElMessage.success('规则已发布，可在创建房间时选择')
+  const result = await ruleApi.submitReview(savedDraftId)
+  submitting.value = false
+
+  if (result.success && result.data) {
+    draftStatus.value = (result.data.status as RuleDraftStatus) || 'pendingReview'
+    rejectReason.value = ''
+    ElMessage.success('规则已提交审核，请等待审核员处理')
   } else {
-    ElMessage.error(result.message || '规则发布失败')
+    ElMessage.error(result.message || '规则提交审核失败')
   }
 }
 
+const publishButtonLabel = computed(() => {
+  switch (draftStatus.value) {
+    case 'pendingReview':
+      return '审核中'
+    case 'published':
+      return '更新上架规则'
+    case 'rejected':
+      return '重新提交审核'
+    default:
+      return '提交审核'
+  }
+})
+
+const publishButtonDisabled = computed(() => {
+  return submitting.value || draftStatus.value === 'pendingReview'
+})
+
 const backToCenter = () => {
-  void router.push('/creation-center')
+  void router.push(isReadonly.value ? '/admin/rules-review' : '/creation-center')
+}
+
+const TUTORIAL_URL = 'https://buaa-iset.github.io/WildCard_Docs/tutorials/rule-builder-overview/'
+const openTutorial = () => {
+  window.open(TUTORIAL_URL, '_blank', 'noopener')
 }
 </script>
 
@@ -907,6 +976,43 @@ const backToCenter = () => {
   color: #252633;
   overflow: hidden;
   text-align: left;
+}
+
+.rule-builder-page.readonly-mode {
+  grid-template-rows: auto auto auto 1fr;
+}
+
+/*
+ * 审核员只读预览：屏蔽工作区内所有表单元素 / 按钮，避免审核员误改属性面板 / 结构面板。
+ * 仅作用于 .builder-main 内部，header 上的「返回 / 教程 / 显示 JSON」按钮以及画布工具栏
+ * 的「整理布局 / 全屏」按钮位于 .builder-main 之外或本身不会改 design，保留可点。
+ *
+ * 拖拽 / 连线 / 删除节点等 Vue Flow 内部编辑动作另外通过 RuleFlowCanvas 的 readonly prop 关掉
+ * （nodesDraggable / nodesConnectable / elementsSelectable / deleteKeyCode）。
+ */
+.readonly-mode :deep(.builder-main input),
+.readonly-mode :deep(.builder-main textarea),
+.readonly-mode :deep(.builder-main button),
+.readonly-mode :deep(.builder-main .el-input__inner),
+.readonly-mode :deep(.builder-main .el-select),
+.readonly-mode :deep(.builder-main .el-button) {
+  pointer-events: none;
+}
+
+/* 画布工具栏按钮（整理布局 / 全屏）不属于编辑动作，恢复点击。 */
+.readonly-mode :deep(.builder-main .canvas-toolbar .el-button),
+.readonly-mode :deep(.builder-main .canvas-toolbar button) {
+  pointer-events: auto;
+}
+
+.readonly-banner {
+  padding: 10px 28px;
+  background: linear-gradient(90deg, #fff7e6 0%, #ffe9c2 100%);
+  border-bottom: 1px solid #f4c477;
+  color: #8a5a00;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
 }
 
 .builder-header {
@@ -929,7 +1035,7 @@ const backToCenter = () => {
 
 .builder-header p {
   margin: 6px 0 0;
-  color: #737c8d;
+  color: #3a4050;
   font-size: 14px;
 }
 
@@ -937,6 +1043,17 @@ const backToCenter = () => {
   display: flex;
   gap: 10px;
   flex-shrink: 0;
+  align-items: center;
+}
+
+.reject-reason-inline {
+  color: #b42323;
+  font-size: 12px;
+  font-weight: 500;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace-tabs {
@@ -953,7 +1070,7 @@ const backToCenter = () => {
   border: 1px solid #d8dce5;
   border-radius: 8px;
   background: #fbfcfe;
-  color: #3c4351;
+  color: #2a3040;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
@@ -1031,7 +1148,7 @@ const backToCenter = () => {
 
 .method-empty-state p {
   margin: 0 0 18px;
-  color: #737c8d;
+  color: #3a4050;
   font-size: 14px;
   line-height: 1.7;
 }
@@ -1087,7 +1204,7 @@ const backToCenter = () => {
 
 .step-item p {
   margin: 6px 0 0;
-  color: #737c8d;
+  color: #3a4050;
   font-size: 14px;
   line-height: 1.6;
 }

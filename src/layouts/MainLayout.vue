@@ -22,10 +22,22 @@
           <router-link to="/match-history" class="nav-item" exact-active-class="active">
             <el-icon><Clock /></el-icon>
             <span>历史对局</span>
+          <router-link to="/rule-market" class="nav-item" exact-active-class="active">
+            <el-icon><Shop /></el-icon>
+            <span>规则市场</span>
           </router-link>
           <router-link to="/user-info" class="nav-item" exact-active-class="active">
             <el-icon><User /></el-icon>
             <span>用户中心</span>
+          </router-link>
+          <router-link
+            v-if="userStore.isAdmin"
+            to="/admin/rules-review"
+            class="nav-item"
+            exact-active-class="active"
+          >
+            <el-icon><Document /></el-icon>
+            <span>规则审核</span>
           </router-link>
         </nav>
         <div class="sidebar-bottom">
@@ -52,32 +64,26 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
-import defaultAvatarUrl from '../assets/default-avatar.svg'
+import { resolveAvatarUrl } from '../utils/avatar'
 
 const router = useRouter()
 const userStore = useUserStore()
 const { isLoggedIn, username, email, avatar } = storeToRefs(userStore)
-const defaultAvatar = defaultAvatarUrl;
 
-const displayAvatar = computed(() => avatar.value || defaultAvatar)
+const displayAvatar = computed(() => resolveAvatarUrl(avatar.value))
 const displayUsername = computed(() => username.value || '未登录')
 const displayEmail = computed(() => email.value || 'not logged in')
 
 const handleTeamIntro = () => {
-  openRouteInNewWindow('/teaminfo/about')
+  void router.push('/teaminfo/about')
 }
 
 const handleContact = () => {
-  openRouteInNewWindow('/teaminfo/contact')
+  void router.push('/teaminfo/contact')
 }
 
 const handleHelp = () => {
-  openRouteInNewWindow('/teaminfo/help')
-}
-
-const openRouteInNewWindow = (path: string) => {
-  const routeUrl = router.resolve(path).href
-  window.open(routeUrl, '_blank', 'noopener,noreferrer')
+  void router.push('/teaminfo/help')
 }
 </script>
 
@@ -96,6 +102,9 @@ const openRouteInNewWindow = (path: string) => {
   overflow: hidden;
 }
 
+/* 审核员预览 iframe：藏掉外层 chrome，再把高度链强制贯通到 RuleBuilder。
+ * 父链 #app 用了 min-height:100svh 和 flex column，预览时改成显式 height
+ * 让里头的 height:100% 能拿到具体值。 */
 .auth-only-layout {
   background: #fff;
 }

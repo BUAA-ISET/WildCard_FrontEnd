@@ -3,10 +3,22 @@
     <div v-if="isLoggedIn" class="user-account-container">
       <div class="profile-block">
         <div class="profile-content">
-          <img :src="user.avatar || defaultAvatar" class="avatar-img" />
+          <img :src="avatarUrl" class="avatar-img" />
           <div class="profile-meta">
             <div class="user-name">{{ user.username }}</div>
             <div class="user-email">{{ user.email }}</div>
+            <div class="avatar-actions">
+              <input
+                ref="avatarFileInput"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                class="avatar-file-input"
+                @change="onAvatarFileChange"
+              />
+              <el-button size="small" :loading="isUploadingAvatar" @click="onPickAvatar">
+                {{ isUploadingAvatar ? '上传中…' : '修改头像' }}
+              </el-button>
+            </div>
           </div>
         </div>
       </div>
@@ -25,6 +37,22 @@
           <el-input v-model="passwordForm.confirm" type="password" class="setting-input" />
           <el-button class="user-btn" size="medium" @click="onUpdatePassword">修改密码</el-button>
         </div>
+        <div class="setting-section">
+          <div class="setting-label">新邮箱</div>
+          <el-input v-model="emailForm.newEmail" placeholder="example@mail.com" class="setting-input" />
+          <div class="setting-label">邮箱验证码</div>
+          <div class="inline-field">
+            <el-input v-model="emailForm.verificationCode" class="setting-input compact-input" />
+            <el-button
+              class="send-code-btn"
+              :disabled="emailCountdown > 0"
+              @click="onSendEmailChangeCode"
+            >
+              {{ emailCountdown > 0 ? `${emailCountdown}s` : '发送验证码' }}
+            </el-button>
+          </div>
+          <el-button class="user-btn" size="medium" @click="onUpdateEmail">修改邮箱</el-button>
+        </div>
         <div class="logout-section">
           <el-button type="danger" class="logout-btn" size="medium" @click="onLogout">退出登录</el-button>
         </div>
@@ -38,14 +66,17 @@
         <el-tab-pane label="登录" name="login">
           <div class="auth-form">
             <div class="auth-field">
-              <div class="setting-label">邮箱</div>
-              <el-input v-model="loginForm.email" placeholder="example@mail.com" class="setting-input" />
+              <div class="setting-label">邮箱 / 用户名</div>
+              <el-input v-model="loginForm.email" placeholder="邮箱或用户名" class="setting-input" />
             </div>
             <div class="auth-field">
               <div class="setting-label">密码</div>
               <el-input v-model="loginForm.password" type="password" class="setting-input" show-password />
             </div>
             <el-button class="user-btn" size="medium" @click="onLogin">登录</el-button>
+            <div class="auth-link-row">
+              <a class="auth-link" @click="authTab = 'reset'">忘记密码?</a>
+            </div>
           </div>
         </el-tab-pane>
         <el-tab-pane label="注册" name="register">
@@ -86,6 +117,40 @@
             <el-button class="user-btn" size="medium" @click="onRegister">注册</el-button>
           </div>
         </el-tab-pane>
+        <el-tab-pane label="找回密码" name="reset">
+          <div class="auth-form">
+            <div class="auth-field">
+              <div class="setting-label">注册邮箱</div>
+              <div class="inline-field">
+                <el-input
+                  v-model="resetForm.email"
+                  placeholder="example@mail.com"
+                  class="setting-input compact-input"
+                />
+                <el-button
+                  class="send-code-btn"
+                  :disabled="resetCountdown > 0"
+                  @click="onSendResetCode"
+                >
+                  {{ resetCountdown > 0 ? `${resetCountdown}s` : '发送验证码' }}
+                </el-button>
+              </div>
+            </div>
+            <div class="auth-field">
+              <div class="setting-label">验证码</div>
+              <el-input v-model="resetForm.verificationCode" class="setting-input" />
+            </div>
+            <div class="auth-field">
+              <div class="setting-label">新密码</div>
+              <el-input v-model="resetForm.newPassword" type="password" class="setting-input" show-password />
+            </div>
+            <div class="auth-field">
+              <div class="setting-label">确认新密码</div>
+              <el-input v-model="resetForm.confirm" type="password" class="setting-input" show-password />
+            </div>
+            <el-button class="user-btn" size="medium" @click="onResetPassword">重置密码</el-button>
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </div>
   </div>
@@ -98,10 +163,9 @@ import { ElMessage } from 'element-plus'
 import { shouldUseUserMockApi } from '../api/config'
 import { userApi } from '../api/user'
 import { useUserStore } from '../stores/userStore'
-import defaultAvatarUrl from '../assets/default-avatar.svg'
+import { resolveAvatarUrl } from '../utils/avatar'
 
 
-const defaultAvatar = defaultAvatarUrl;
 const SEND_CODE_COOLDOWN = 60
 const isMockApi = shouldUseUserMockApi()
 
@@ -135,6 +199,25 @@ const registerForm = reactive({
   password: '',
   confirm: '',
 })
+const emailForm = reactive({
+  newEmail: '',
+  verificationCode: '',
+})
+const emailCountdown = ref(0)
+let emailCountdownTimer: ReturnType<typeof setInterval> | null = null
+
+const resetForm = reactive({
+  email: '',
+  verificationCode: '',
+  newPassword: '',
+  confirm: '',
+})
+const resetCountdown = ref(0)
+let resetCountdownTimer: ReturnType<typeof setInterval> | null = null
+
+const avatarFileInput = ref<HTMLInputElement | null>(null)
+const isUploadingAvatar = ref(false)
+const avatarUrl = computed(() => resolveAvatarUrl(avatar.value))
 
 const isSendingCode = ref(false)
 const verificationCountdown = ref(0)
@@ -192,7 +275,7 @@ async function onLogin() {
   const password = loginForm.password.trim()
 
   if (!emailValue || !password) {
-    ElMessage.error('请输入邮箱和密码')
+    ElMessage.error('请输入邮箱或用户名以及密码')
     return
   }
 
@@ -322,6 +405,159 @@ async function onUpdatePassword() {
     ElMessage.error(result.message || '更新失败')
   }
 }
+
+function startEmailCountdown() {
+  emailCountdown.value = SEND_CODE_COOLDOWN
+  if (emailCountdownTimer) {
+    clearInterval(emailCountdownTimer)
+  }
+  emailCountdownTimer = setInterval(() => {
+    if (emailCountdown.value <= 1) {
+      emailCountdown.value = 0
+      if (emailCountdownTimer) {
+        clearInterval(emailCountdownTimer)
+        emailCountdownTimer = null
+      }
+    } else {
+      emailCountdown.value -= 1
+    }
+  }, 1000)
+}
+
+async function onSendEmailChangeCode() {
+  const target = emailForm.newEmail.trim()
+  if (!target) {
+    ElMessage.error('请先填写新邮箱')
+    return
+  }
+  const result = await userApi.sendVerificationCode({ email: target })
+  if (result.success) {
+    if (result.debugCode) {
+      emailForm.verificationCode = result.debugCode
+    }
+    startEmailCountdown()
+    ElMessage.success(result.message || '验证码已发送')
+  } else {
+    ElMessage.error(result.message || '发送失败')
+  }
+}
+
+async function onUpdateEmail() {
+  if (!emailForm.newEmail.trim() || !emailForm.verificationCode.trim()) {
+    ElMessage.error('请填写新邮箱和验证码')
+    return
+  }
+  const result = await userStore.updateEmail({
+    newEmail: emailForm.newEmail.trim(),
+    verificationCode: emailForm.verificationCode.trim(),
+  })
+  if (result.success) {
+    emailForm.newEmail = ''
+    emailForm.verificationCode = ''
+    emailCountdown.value = 0
+    if (emailCountdownTimer) {
+      clearInterval(emailCountdownTimer)
+      emailCountdownTimer = null
+    }
+    ElMessage.success(result.message || '邮箱已更新')
+  } else {
+    ElMessage.error(result.message || '邮箱修改失败')
+  }
+}
+
+function onPickAvatar() {
+  avatarFileInput.value?.click()
+}
+
+async function onAvatarFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  if (file.size > 2 * 1024 * 1024) {
+    ElMessage.error('头像不能超过 2MB')
+    target.value = ''
+    return
+  }
+  isUploadingAvatar.value = true
+  try {
+    const result = await userStore.uploadAvatar(file)
+    if (result.success) {
+      ElMessage.success('头像已更新')
+    } else {
+      ElMessage.error(result.message || '上传失败')
+    }
+  } finally {
+    isUploadingAvatar.value = false
+    target.value = ''
+  }
+}
+
+function startResetCountdown() {
+  resetCountdown.value = SEND_CODE_COOLDOWN
+  if (resetCountdownTimer) {
+    clearInterval(resetCountdownTimer)
+  }
+  resetCountdownTimer = setInterval(() => {
+    if (resetCountdown.value <= 1) {
+      resetCountdown.value = 0
+      if (resetCountdownTimer) {
+        clearInterval(resetCountdownTimer)
+        resetCountdownTimer = null
+      }
+    } else {
+      resetCountdown.value -= 1
+    }
+  }, 1000)
+}
+
+async function onSendResetCode() {
+  const target = resetForm.email.trim()
+  if (!target) {
+    ElMessage.error('请先填写注册邮箱')
+    return
+  }
+  const result = await userApi.sendPasswordResetCode({ email: target })
+  if (result.success) {
+    if (result.debugCode) {
+      resetForm.verificationCode = result.debugCode
+    }
+    startResetCountdown()
+    ElMessage.success(result.message || '验证码已发送')
+  } else {
+    ElMessage.error(result.message || '发送失败')
+  }
+}
+
+async function onResetPassword() {
+  if (!resetForm.email.trim() || !resetForm.verificationCode.trim() || !resetForm.newPassword) {
+    ElMessage.error('请填写完整字段')
+    return
+  }
+  if (resetForm.newPassword !== resetForm.confirm) {
+    ElMessage.error('两次输入的新密码不一致')
+    return
+  }
+  const result = await userApi.resetPassword({
+    email: resetForm.email.trim(),
+    verificationCode: resetForm.verificationCode.trim(),
+    newPassword: resetForm.newPassword,
+  })
+  if (result.success) {
+    resetForm.email = ''
+    resetForm.verificationCode = ''
+    resetForm.newPassword = ''
+    resetForm.confirm = ''
+    resetCountdown.value = 0
+    if (resetCountdownTimer) {
+      clearInterval(resetCountdownTimer)
+      resetCountdownTimer = null
+    }
+    ElMessage.success(result.message || '密码已重置,请用新密码登录')
+    authTab.value = 'login'
+  } else {
+    ElMessage.error(result.message || '重置失败')
+  }
+}
 </script>
 
 <style scoped>
@@ -374,6 +610,17 @@ async function onUpdatePassword() {
   border-radius: 50%;
   background: #f0f0f0;
   margin-bottom: 18px;
+  object-fit: cover;
+}
+
+.avatar-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.avatar-file-input {
+  display: none;
 }
 
 .user-name {
@@ -422,6 +669,19 @@ async function onUpdatePassword() {
 .setting-input {
   margin-bottom: 8px;
   width: 100%;
+}
+
+.setting-input :deep(.el-input__inner) {
+  line-height: 1.6;
+  height: auto;
+  padding-block: 4px;
+  font-family: system-ui, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-text-fill-color: currentColor;
+}
+
+.setting-input :deep(.el-input__inner:-webkit-autofill) {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  -webkit-text-fill-color: currentColor;
 }
 
 .inline-field {
@@ -514,6 +774,22 @@ async function onUpdatePassword() {
 .user-btn:hover,
 .send-code-btn:hover {
   background: #ece6fa;
+}
+
+.auth-link-row {
+  margin-top: 8px;
+  text-align: right;
+}
+
+.auth-link {
+  color: #6b46c1;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+.auth-link:hover {
+  color: #4c1d95;
 }
 
 :deep(.el-tabs__header) {
