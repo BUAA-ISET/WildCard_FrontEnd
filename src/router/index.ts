@@ -21,6 +21,7 @@ import RuleMarketDetailView from '../views/RuleMarketDetailView.vue'
 import RuleDeveloperDetailView from '../views/RuleDeveloperDetailView.vue'
 import RuleRoomSearchView from '../views/RuleRoomSearchView.vue'
 import AdminRuleReviewView from '../views/AdminRuleReviewView.vue'
+import AdminReportReviewView from '../views/AdminReportReviewView.vue'
 import { ElMessage } from 'element-plus'
 import { roomApi, getRoomEntryPath } from '../api/room'
 import { useUserStore } from '../stores/userStore'
@@ -94,6 +95,10 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'admin/rules-review',
         component: AdminRuleReviewView
+      },
+      {
+        path: 'admin/reports-review',
+        component: AdminReportReviewView
       },
       {
         // 审核员的可视化预览模式：与作者编辑共用 RuleBuilderView 组件，由组件内部根据 route.path 切到 readonly。

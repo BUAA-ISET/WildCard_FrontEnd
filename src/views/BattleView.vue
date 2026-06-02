@@ -19,13 +19,27 @@
           v-for="player in opponents"
           :key="player.id"
           class="player-card"
-          :class="{ active: currentTurnPlayerId === player.id }"
+          :class="{ active: currentTurnPlayerId === player.id, selected: selectedOpponentId === player.id }"
+          role="button"
+          tabindex="0"
+          @click="toggleSelectedOpponent(player.id)"
+          @keydown.enter.prevent="toggleSelectedOpponent(player.id)"
         >
           <div class="player-avatar">{{ player.name.slice(0, 1) }}</div>
           <div class="mini-back" :style="backCardStyle">
             <div v-if="!cardStyle.backImage" class="mini-back-inner"></div>
           </div>
           <div class="card-count">{{ player.cardCount }}</div>
+          <ReportButton
+            v-if="selectedOpponentId === player.id"
+            class="battle-report"
+            target-type="player_behavior"
+            :target-id="player.id"
+            :target-label="player.name"
+            tooltip="举报对局行为"
+            small
+            :context="{ roomCode: snapshot?.roomCode, sessionId: snapshot?.sessionId, ruleId: snapshot?.ruleId, targetLabel: player.name }"
+          />
         </div>
       </div>
     </div>
@@ -94,6 +108,7 @@ import { ElMessage } from 'element-plus'
 import { gameApi, type GameSnapshot } from '../api/game'
 import { roomApi } from '../api/room'
 import { replayApi } from '../api/replay'
+import ReportButton from '../components/report/ReportButton.vue'
 
 type CardStyle = {
   fontFamily: string
@@ -114,6 +129,7 @@ const storageKey = 'wildcard-card-style'
 const currentPlayerId = roomApi.getCurrentPlayerId()
 const snapshot = ref<GameSnapshot | null>(null)
 const selectedCardIds = ref<string[]>([])
+const selectedOpponentId = ref('')
 const actionLoading = ref(false)
 const isLeavingBattle = ref(false)
 const showSettlementNotice = ref(false)
@@ -265,6 +281,9 @@ async function refreshSnapshot() {
   }
 
   snapshot.value = result.data
+  if (selectedOpponentId.value && !result.data.players.some((player) => player.id === selectedOpponentId.value)) {
+    selectedOpponentId.value = ''
+  }
   selectedCardIds.value = selectedCardIds.value.filter((cardId) => (
     result.data?.handCards.some((card) => card.id === cardId)
   ))
@@ -295,6 +314,10 @@ function scheduleReadyRoomRedirect() {
     settlementTimer = null
     void returnToReadyRoom()
   }, SETTLEMENT_REDIRECT_DELAY_MS)
+}
+
+function toggleSelectedOpponent(playerId: string) {
+  selectedOpponentId.value = selectedOpponentId.value === playerId ? '' : playerId
 }
 
 async function playSelectedCards() {
@@ -447,6 +470,7 @@ onBeforeUnmount(() => {
 }
 
 .player-card {
+  position: relative;
   flex: 0 0 320px;
   height: 108px;
   display: flex;
@@ -458,10 +482,21 @@ onBeforeUnmount(() => {
   background: #f4f5f8;
 }
 
+.battle-report {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
 .player-card.active,
 .user-info.active {
   border-color: #8d79d6;
   box-shadow: 0 0 0 3px rgba(141, 121, 214, 0.18);
+}
+
+.player-card.selected {
+  border-color: #d46b6b;
+  box-shadow: 0 0 0 3px rgba(212, 107, 107, 0.16);
 }
 
 .player-avatar,

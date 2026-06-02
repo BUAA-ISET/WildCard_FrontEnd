@@ -31,7 +31,11 @@
           v-for="player in room.players"
           :key="player.id"
           class="player-box"
-          :class="{ current: player.id === currentPlayerId }"
+          :class="{ current: player.id === currentPlayerId, selected: selectedPlayerId === player.id }"
+          role="button"
+          tabindex="0"
+          @click="toggleSelectedPlayer(player.id)"
+          @keydown.enter.prevent="toggleSelectedPlayer(player.id)"
         >
           <img
             :src="player.avatar || DEFAULT_AVATAR"
@@ -43,6 +47,16 @@
           <div class="player-status" :class="{ ready: player.isReady }">
             {{ player.id === room.hostId ? '房主' : player.isReady ? '准备' : '未准备' }}
           </div>
+          <ReportButton
+            v-if="player.id !== currentPlayerId && selectedPlayerId === player.id"
+            class="player-report"
+            target-type="user"
+            :target-id="player.id"
+            :target-label="player.username"
+            tooltip="举报玩家"
+            small
+            :context="{ roomCode: room.code, targetLabel: player.username }"
+          />
         </article>
 
         <article
@@ -85,6 +99,7 @@ import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
 import { roomApi, DEFAULT_AVATAR, getRoomEntryPath, type Room } from '../api/room'
 import { useUserStore } from '../stores/userStore'
+import ReportButton from '../components/report/ReportButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -93,6 +108,7 @@ const { username, avatar } = storeToRefs(userStore)
 const currentPlayerId = roomApi.getCurrentPlayerId()
 const room = ref<Room | null>(null)
 const actionLoading = ref(false)
+const selectedPlayerId = ref('')
 let pollingTimer: number | null = null
 const currentPlayer = computed(() => room.value?.players.find((player) => player.id === currentPlayerId) || null)
 
@@ -141,6 +157,9 @@ async function refreshRoom() {
 
   room.value = result.data
   syncCurrentPlayerProfile()
+  if (selectedPlayerId.value && !room.value.players.some((player) => player.id === selectedPlayerId.value)) {
+    selectedPlayerId.value = ''
+  }
 
   if (!room.value.players.some((player) => player.id === currentPlayerId)) {
     stopPolling()
@@ -209,6 +228,14 @@ function stopPolling() {
     window.clearInterval(pollingTimer)
     pollingTimer = null
   }
+}
+
+function toggleSelectedPlayer(playerId: string) {
+  if (playerId === currentPlayerId) {
+    selectedPlayerId.value = ''
+    return
+  }
+  selectedPlayerId.value = selectedPlayerId.value === playerId ? '' : playerId
 }
 
 onMounted(async () => {
@@ -327,6 +354,7 @@ onBeforeUnmount(() => {
 }
 
 .player-box {
+  position: relative;
   min-height: 180px;
   padding: 24px 18px;
   border: 1px solid #d7dbe7;
@@ -339,9 +367,20 @@ onBeforeUnmount(() => {
   text-align: center;
 }
 
+.player-report {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
 .player-box.current {
   border-color: #ab99af;
   box-shadow: 0 8px 20px rgba(171, 153, 175, 0.16);
+}
+
+.player-box.selected {
+  border-color: #d46b6b;
+  box-shadow: 0 8px 20px rgba(159, 47, 47, 0.12);
 }
 
 .player-box.empty {
