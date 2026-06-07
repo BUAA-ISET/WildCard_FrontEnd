@@ -6,6 +6,15 @@
         <h1>{{ developerName }}</h1>
         <p>{{ developerBio }}</p>
       </div>
+      <ReportButton
+        v-if="developerId"
+        class="developer-report"
+        target-type="user"
+        :target-id="developerId"
+        :target-label="developerName"
+        tooltip="举报作者"
+        :context="{ targetLabel: developerName }"
+      />
     </header>
 
     <section class="search-panel">
@@ -54,6 +63,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { marketApi, resolveDeveloperAvatar, type PublishedRuleSummary } from '../api/market'
+import ReportButton from '../components/report/ReportButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -110,11 +120,16 @@ onMounted(() => {
 }
 
 .developer-header {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 22px 24px;
   margin-bottom: 16px;
+}
+
+.developer-report {
+  margin-left: auto;
 }
 
 .developer-header img {

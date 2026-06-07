@@ -7,6 +7,14 @@
           <div class="title-line">
             <h1>{{ rule.name }}</h1>
             <el-tag>{{ rule.type }}</el-tag>
+            <ReportButton
+              target-type="rule"
+              :target-id="rule.id"
+              :target-label="rule.name"
+              tooltip="举报规则"
+              small
+              :context="{ ruleId: rule.id, targetLabel: rule.name }"
+            />
           </div>
           <div class="rating-line">
             <el-rate :model-value="rule.rating" disabled allow-half />
@@ -23,6 +31,15 @@
         <section class="screenshot-panel panel">
           <img v-if="coverImage" :src="resolveImageUrl(coverImage)" :alt="rule.name">
           <div v-else class="screenshot-placeholder">{{ rule.type }}</div>
+          <ReportButton
+            class="asset-report"
+            target-type="rule"
+            :target-id="rule.id"
+            :target-label="`${rule.name} 的图形资源`"
+            tooltip="举报图形资源"
+            small
+            :context="{ ruleId: rule.id, targetLabel: `${rule.name} 的图形资源` }"
+          />
         </section>
         <section class="intro-panel panel">
           <h2>玩法介绍</h2>
@@ -88,6 +105,14 @@
               <strong>{{ review.authorName }}</strong>
               <el-rate :model-value="review.rating" disabled size="small" />
               <span>{{ formatDate(review.createdAt) }}</span>
+              <ReportButton
+                target-type="review"
+                :target-id="review.id"
+                :target-label="`${rule.name} 的评价`"
+                tooltip="举报评价"
+                small
+                :context="{ ruleId: rule.id, targetLabel: `${rule.name} 的评价` }"
+              />
             </div>
             <p>{{ review.content }}</p>
             <img v-if="review.imageUrl" :src="review.imageUrl" :alt="review.content" class="review-image">
@@ -107,6 +132,7 @@ import type { UploadFile } from 'element-plus'
 import { marketApi, resolveDeveloperAvatar, type PublishedRuleDetail } from '../api/market'
 import { getApiUrl } from '../api/config'
 import { useRuleFork } from '../composables/useRuleFork'
+import ReportButton from '../components/report/ReportButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -332,8 +358,15 @@ onMounted(() => {
 }
 
 .screenshot-panel {
+  position: relative;
   min-height: 320px;
   overflow: hidden;
+}
+
+.asset-report {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }
 
 .screenshot-panel img {

@@ -40,6 +40,15 @@
             <el-icon><Document /></el-icon>
             <span>规则审核</span>
           </router-link>
+          <router-link
+            v-if="userStore.isAdmin"
+            to="/admin/reports-review"
+            class="nav-item"
+            exact-active-class="active"
+          >
+            <el-icon><Warning /></el-icon>
+            <span>举报审核</span>
+          </router-link>
         </nav>
         <div class="sidebar-bottom">
           <div class="user-avatar">
@@ -62,6 +71,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { Warning } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
