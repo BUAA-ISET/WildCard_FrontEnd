@@ -1,7 +1,7 @@
-const PRODUCTION_API_BASE_URL = 'http://69.197.183.145:3000'
+const PRODUCTION_API_BASE_URL = 'http://81.70.231.146:3000'
 
 const isProductionHost = (host: string): boolean => {
-    return host === 'isetwildcard.me' || host.endsWith('.github.io')
+    return host === '81.70.231.146' || host === 'isetwildcard.me' || host.endsWith('.github.io')
 }
 
 const resolveBaseUrl = (): string => {
@@ -76,4 +76,3 @@ export const shouldUseUserMockApi = (): boolean => API_CONFIG.userUseMock ?? API
 export const shouldUseRoomMockApi = (): boolean => API_CONFIG.roomUseMock ?? API_CONFIG.USE_MOCK
 export const shouldUseGameMockApi = (): boolean => API_CONFIG.gameUseMock ?? API_CONFIG.USE_MOCK
 export const shouldUseMarketMockApi = (): boolean => API_CONFIG.marketUseMock ?? API_CONFIG.USE_MOCK
-

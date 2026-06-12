@@ -1,5 +1,5 @@
 <template>
-  <div class="battle-page">
+  <div class="battle-page" :style="battlePageStyle">
     <div
       v-if="showSettlementNotice"
       class="settlement-banner"
@@ -27,7 +27,7 @@
         >
           <div class="player-avatar">{{ player.name.slice(0, 1) }}</div>
           <div class="mini-back" :style="backCardStyle">
-            <div v-if="!cardStyle.backImage" class="mini-back-inner"></div>
+            <div v-if="!hasCustomBackImage" class="mini-back-inner"></div>
           </div>
           <div class="card-count">{{ player.cardCount }}</div>
           <ReportButton
@@ -51,19 +51,19 @@
           :key="card.id"
           class="game-card table-card"
           :class="themeClass(card.suit)"
-          :style="frontCardStyle"
+          :style="cardFrontStyle(card)"
         >
-          <div class="card-corner">
+          <div v-if="!getCardFaceUrl(card)" class="card-corner">
             <span>{{ card.rank }}</span>
             <span>{{ card.suit }}</span>
           </div>
-          <div class="card-center">{{ card.suit }}</div>
+          <div v-if="!getCardFaceUrl(card)" class="card-center">{{ card.suit }}</div>
         </div>
       </div>
 
       <div class="deck-card">
         <div class="deck-back" :style="backCardStyle">
-          <div v-if="!cardStyle.backImage" class="back-pattern"></div>
+          <div v-if="!hasCustomBackImage" class="back-pattern"></div>
         </div>
       </div>
     </div>
@@ -86,14 +86,14 @@
             :key="card.id"
             class="game-card hand-card"
             :class="[themeClass(card.suit), { selected: selectedCardIds.includes(card.id) }]"
-            :style="frontCardStyle"
+            :style="cardFrontStyle(card)"
             @click="toggleCard(card.id)"
           >
-            <div class="card-corner">
+            <div v-if="!getCardFaceUrl(card)" class="card-corner">
               <span>{{ card.rank }}</span>
               <span>{{ card.suit }}</span>
             </div>
-            <div class="card-center">{{ card.suit }}</div>
+            <div v-if="!getCardFaceUrl(card)" class="card-center">{{ card.suit }}</div>
           </button>
         </div>
       </div>
@@ -105,7 +105,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { gameApi, type GameSnapshot } from '../api/game'
+import { gameApi, type GameCard, type GameSnapshot } from '../api/game'
+import { getApiUrl } from '../api/config'
 import { roomApi } from '../api/room'
 import { replayApi } from '../api/replay'
 import ReportButton from '../components/report/ReportButton.vue'
@@ -121,6 +122,7 @@ type BattleCard = {
   id: string
   rank: string
   suit: string
+  properties: Record<string, number>
 }
 
 const route = useRoute()
@@ -181,6 +183,7 @@ const tableCards = computed<BattleCard[]>(() => (
     id: card.id,
     rank: card.display.rank,
     suit: card.display.suit,
+    properties: card.properties,
   })) || []
 ))
 
@@ -189,6 +192,7 @@ const handCards = computed<BattleCard[]>(() => (
     id: card.id,
     rank: card.display.rank,
     suit: card.display.suit,
+    properties: card.properties,
   })) || []
 ))
 
@@ -232,10 +236,69 @@ const frontCardStyle = computed(() => ({
   backgroundSize: cardStyle.frontImage ? 'cover' : 'initial',
 }))
 
+function resolveImageUrl(url: string) {
+  if (!url) return ''
+  if (/^(https?:|data:)/i.test(url)) {
+    return url
+  }
+  return getApiUrl(url)
+}
+
+function getCardFaceUrl(card: Pick<GameCard, 'properties'>): string {
+  const faces = snapshot.value?.assets?.card_faces || {}
+  const asset = Object.values(faces).find((item) => {
+    if (!item?.image_url) {
+      return false
+    }
+
+    return Object.entries(item.properties || {}).every(([name, value]) => (
+      Number(card.properties[name]) === Number(value)
+    ))
+  })
+
+  return asset?.image_url ? resolveImageUrl(asset.image_url) : ''
+}
+
+function cardFrontStyle(card: BattleCard) {
+  const customFaceUrl = getCardFaceUrl(card)
+  if (customFaceUrl) {
+    return {
+      fontFamily: cardStyle.fontFamily,
+      backgroundImage: `url(${customFaceUrl})`,
+      backgroundSize: 'cover',
+    }
+  }
+
+  return frontCardStyle.value
+}
+
+const customBackImage = computed(() => {
+  return snapshot.value?.assets?.card_back ? resolveImageUrl(snapshot.value.assets.card_back) : ''
+})
+
+const hasCustomBackImage = computed(() => Boolean(customBackImage.value || cardStyle.backImage))
+
 const backCardStyle = computed(() => ({
-  backgroundImage: cardStyle.backImage ? `url(${cardStyle.backImage})` : 'none',
-  backgroundSize: cardStyle.backImage ? 'cover' : 'initial',
+  backgroundImage: customBackImage.value || cardStyle.backImage
+    ? `url(${customBackImage.value || cardStyle.backImage})`
+    : 'none',
+  backgroundSize: customBackImage.value || cardStyle.backImage ? 'cover' : 'initial',
 }))
+
+const battlePageStyle = computed(() => {
+  const background = snapshot.value?.assets?.background
+  const backgroundUrl = background ? resolveImageUrl(background) : ''
+
+  if (!backgroundUrl) {
+    return {}
+  }
+
+  return {
+    backgroundImage: `url(${backgroundUrl})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+  }
+})
 
 function themeClass(suit: string) {
   const colorClass = suit === 'H' || suit === 'D' ? 'red-card' : 'black-card'

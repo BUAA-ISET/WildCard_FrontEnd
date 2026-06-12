@@ -70,6 +70,17 @@ export interface FlowGraphDraft {
   edges: RuleEdgeDraft[]
 }
 
+export interface CardFaceAssetDraft {
+  properties: Record<string, number>
+  imageUrl: string
+}
+
+export interface RuleAssetDraft {
+  cardFaces: Record<string, CardFaceAssetDraft>
+  cardBack: string
+  background: string
+}
+
 export interface RuleNodeDraft {
   id: string
   type: 'rule'
@@ -116,6 +127,7 @@ export interface RuleDesignDraft {
   cardsetComparisons: CardsetComparisonDraft[]
   matchFlow: FlowGraphDraft
   endFlow: FlowGraphDraft
+  assets: RuleAssetDraft
 }
 
 export interface ValidationResult {
@@ -181,4 +193,12 @@ export type ExportedRuleDesign = {
   }>
   match_flow: Record<string, ExportedFlowNode>
   end_flow: Record<string, ExportedFlowNode>
+  assets?: {
+    card_faces?: Record<string, {
+      properties: Record<string, number>
+      image_url: string
+    }>
+    card_back?: string
+    background?: string
+  }
 }

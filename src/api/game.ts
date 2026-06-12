@@ -4,14 +4,20 @@ import { buildRoomHeaders, roomApi } from './room'
 
 export interface GameCard {
     id: string
-    properties: {
-        point: number
-        suit: number
-    }
+    properties: Record<string, number>
     display: {
         rank: string
         suit: string
     }
+}
+
+export interface RuleAssets {
+    card_faces?: Record<string, {
+        properties: Record<string, number>
+        image_url: string
+    }>
+    card_back?: string
+    background?: string
 }
 
 export interface GamePlayerView {
@@ -64,6 +70,7 @@ export interface GameSnapshot {
     pendingAction: PendingAction | null
     lastAction: GameActionRecord | null
     winnerIds: string[]
+    assets?: RuleAssets
 }
 
 type ApiResult<T> = {
@@ -120,6 +127,8 @@ type BackendGameSession = {
     pendingAction?: PendingAction | null
     lastAction?: GameActionRecord | null
     winnerIds?: string[]
+    assets?: RuleAssets
+    rule_assets?: RuleAssets
     id?: string
     room_code?: string
     status?: string
@@ -183,10 +192,12 @@ function getPlayerHandCount(player: BackendGamePlayer, hands: Record<string, Bac
 function normalizeCard(card: BackendGameCard): GameCard {
     const point = getPointValue(card)
     const suit = getSuitValue(card)
+    const rawProperties = card.properties || {}
 
     return {
         id: String(card.id || ''),
         properties: {
+            ...rawProperties,
             point,
             suit,
         },
@@ -293,6 +304,7 @@ function toSnapshot(session: BackendGameSession, room: BackendRoom | null): Game
         } : null,
         lastAction: buildLastAction(session),
         winnerIds,
+        assets: session.assets || session.rule_assets,
     }
 }
 

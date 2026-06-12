@@ -409,6 +409,11 @@ export const createInitialDesign = (): RuleDesignDraft => ({
   cardsetComparisons: [createCardsetComparison(1)],
   matchFlow: createEmptyGraph('match'),
   endFlow: createEmptyGraph('settlement'),
+  assets: {
+    cardFaces: {},
+    cardBack: '',
+    background: '',
+  },
 })
 
 const templateByType = new Map(
@@ -538,6 +543,23 @@ export const importRuleDesign = (
     })),
     matchFlow: importFlowGraph(exported.match_flow || {}, 'match'),
     endFlow: importFlowGraph(exported.end_flow || {}, 'settlement'),
+    assets: {
+      cardFaces: Object.fromEntries(
+        Object.entries(exported.assets?.card_faces || {})
+          .filter(([, asset]) => asset?.image_url)
+          .map(([key, asset]) => [
+            key,
+            {
+              properties: Object.fromEntries(
+                Object.entries(asset.properties || {}).map(([name, value]) => [name, Number(value)]),
+              ),
+              imageUrl: asset.image_url,
+            },
+          ]),
+      ),
+      cardBack: exported.assets?.card_back || '',
+      background: exported.assets?.background || '',
+    },
   }
 }
 
@@ -572,6 +594,13 @@ const getPropertyPossibleValues = (property: PropertyDraft) => {
 
   const { lowerBound, upperBound } = normalizeIntRange(property)
   return Array.from({ length: upperBound - lowerBound + 1 }, (_, index) => lowerBound + index)
+}
+
+export const getCardFaceAssetKey = (properties: Record<string, unknown>) => {
+  return Object.entries(properties)
+    .sort(([first], [second]) => first.localeCompare(second))
+    .map(([name, value]) => `${encodeURIComponent(name)}=${encodeURIComponent(String(value))}`)
+    .join('&')
 }
 
 const buildCardProperties = (properties: PropertyDraft[], prefix: Record<string, unknown>, index: number): RuleRuntimeObject[] => {
@@ -609,6 +638,20 @@ const buildCardProperties = (properties: PropertyDraft[], prefix: Record<string,
     id: `card_${index + offset}`,
     name: `card_${index + offset}`,
   }))
+}
+
+export const getRuleCardFaceSlots = (design: RuleDesignDraft) => {
+  return buildCardProperties(design.classes.card?.defaultProperties || [], {}, 0).map(card => {
+    const properties = Object.fromEntries(
+      Object.entries(card.properties).map(([name, value]) => [name, Number(value)]),
+    )
+
+    return {
+      key: getCardFaceAssetKey(properties),
+      id: card.id,
+      properties,
+    }
+  })
 }
 
 export const createRuleObjectPool = (design: RuleDesignDraft): RuleObjectPool => {
@@ -650,6 +693,22 @@ export const createRuleObjectPool = (design: RuleDesignDraft): RuleObjectPool =>
 const propertyListToJson = (properties: PropertyDraft[]): ExportedPropertyMap => {
   return Object.fromEntries(properties.map(property => [property.name, propertyToJson(property)]))
 }
+
+const exportAssets = (assets: RuleDesignDraft['assets']): NonNullable<ExportedRuleDesign['assets']> => ({
+  card_faces: Object.fromEntries(
+    Object.entries(assets.cardFaces)
+      .filter(([, asset]) => asset.imageUrl)
+      .map(([key, asset]) => [
+        key,
+        {
+          properties: asset.properties,
+          image_url: asset.imageUrl,
+        },
+      ]),
+  ),
+  card_back: assets.cardBack || '',
+  background: assets.background || '',
+})
 
 const methodListToJson = (methods: MethodDraft[]): ExportedMethodMap => {
   return Object.fromEntries(
@@ -848,6 +907,7 @@ export const exportRuleDesign = (design: RuleDesignDraft): ExportedRuleDesign =>
   ),
   match_flow: exportFlowGraph(design.matchFlow),
   end_flow: exportFlowGraph(design.endFlow),
+  assets: exportAssets(design.assets),
 })
 
 const validateGraph = (graph: FlowGraphDraft, name: string, strict = false): ValidationResult[] => {

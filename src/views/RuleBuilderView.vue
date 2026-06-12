@@ -88,7 +88,7 @@
         @remove-method-parameter="removeMethodParameter"
       />
       <RuleComponentPalette
-        v-else
+        v-else-if="activeWorkspace !== 'assets'"
         class="left-panel"
         :scope="activeFlowScope"
         :templates="componentTemplates"
@@ -126,6 +126,109 @@
         @auto-layout="autoLayout"
         @toggle-fullscreen="toggleFlowFullscreen"
       />
+      <section v-else-if="activeWorkspace === 'assets'" class="asset-customizer">
+        <div class="asset-header">
+          <div>
+            <h2>牌面与背景自定义</h2>
+            <p>按当前“牌”类的默认属性组合生成牌面。未上传的内容会继续使用默认样式。</p>
+          </div>
+          <span>{{ cardFaceSlots.length }} 张牌面</span>
+        </div>
+
+        <div class="global-assets">
+          <div class="asset-upload-card">
+            <div class="asset-upload-info">
+              <strong>牌背</strong>
+              <span>用于对手手牌和牌堆</span>
+            </div>
+            <div class="asset-preview card-back-preview">
+              <img v-if="design.assets.cardBack" :src="resolveImageUrl(design.assets.cardBack)" alt="牌背预览">
+              <span v-else>默认牌背</span>
+            </div>
+            <label class="asset-upload-button" :class="{ disabled: isReadonly || assetUploading }">
+              上传图片
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                :disabled="isReadonly || assetUploading"
+                @change="uploadGlobalAsset($event, 'cardBack')"
+              >
+            </label>
+            <button
+              v-if="design.assets.cardBack && !isReadonly"
+              type="button"
+              class="asset-clear-button"
+              @click="design.assets.cardBack = ''"
+            >
+              清除
+            </button>
+          </div>
+
+          <div class="asset-upload-card wide-preview">
+            <div class="asset-upload-info">
+              <strong>对局背景</strong>
+              <span>进入该规则对局时显示</span>
+            </div>
+            <div class="asset-preview background-preview">
+              <img v-if="design.assets.background" :src="resolveImageUrl(design.assets.background)" alt="背景预览">
+              <span v-else>默认背景</span>
+            </div>
+            <label class="asset-upload-button" :class="{ disabled: isReadonly || assetUploading }">
+              上传图片
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                :disabled="isReadonly || assetUploading"
+                @change="uploadGlobalAsset($event, 'background')"
+              >
+            </label>
+            <button
+              v-if="design.assets.background && !isReadonly"
+              type="button"
+              class="asset-clear-button"
+              @click="design.assets.background = ''"
+            >
+              清除
+            </button>
+          </div>
+        </div>
+
+        <div class="card-face-grid">
+          <div v-for="slot in cardFaceSlots" :key="slot.key" class="card-face-item">
+            <div class="card-face-preview">
+              <img
+                v-if="design.assets.cardFaces[slot.key]?.imageUrl"
+                :src="resolveImageUrl(design.assets.cardFaces[slot.key].imageUrl)"
+                :alt="formatCardFaceLabel(slot.properties)"
+              >
+              <span v-else>默认牌面</span>
+            </div>
+            <div class="card-face-meta">
+              <strong>{{ formatCardFaceLabel(slot.properties) }}</strong>
+              <span>{{ slot.id }}</span>
+            </div>
+            <div class="asset-row-actions">
+              <label class="asset-upload-button compact" :class="{ disabled: isReadonly || assetUploading }">
+                上传
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  :disabled="isReadonly || assetUploading"
+                  @change="uploadCardFaceAsset($event, slot.key, slot.properties)"
+                >
+              </label>
+              <button
+                v-if="design.assets.cardFaces[slot.key]?.imageUrl && !isReadonly"
+                type="button"
+                class="asset-clear-button compact"
+                @click="delete design.assets.cardFaces[slot.key]"
+              >
+                清除
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
       <section v-else class="method-empty-state">
         <div>
           <h2>还没有可编辑的方法</h2>
@@ -135,7 +238,7 @@
       </section>
 
       <RulePropertyPanel
-        v-if="activeWorkspace !== 'structure' && !showJson"
+        v-if="activeWorkspace !== 'structure' && activeWorkspace !== 'assets' && !showJson"
         :node="selectedNode"
         :design="design"
         :active-method="activeWorkspace === 'method' ? activeMethod : null"
@@ -169,6 +272,7 @@ import RulePropertyPanel from '../components/rule-builder/RulePropertyPanel.vue'
 import RuleStructurePanel from '../components/rule-builder/RuleStructurePanel.vue'
 import { ruleApi } from '../api'
 import { adminApi } from '../api/admin'
+import { getApiUrl } from '../api/config'
 import type { RuleDraftStatus } from '../api/rule'
 import type { ComponentTemplate, FlowGraphDraft, FlowScope, MethodDraft, RuleEdgeDraft, RuleNodeDraft } from '../types/ruleBuilder'
 import {
@@ -183,11 +287,12 @@ import {
   createProperty,
   createRuleObjectPool,
   exportRuleDesign,
+  getRuleCardFaceSlots,
   importRuleDesign,
   validateRuleDesign,
 } from '../utils/ruleBuilder'
 
-type WorkspaceKey = 'structure' | 'method' | 'cardset' | 'cardsetCompare' | 'match' | 'settlement'
+type WorkspaceKey = 'structure' | 'method' | 'cardset' | 'cardsetCompare' | 'match' | 'settlement' | 'assets'
 
 const route = useRoute()
 const router = useRouter()
@@ -205,6 +310,7 @@ const selectedNodeId = ref<string | null>(null)
 const showJson = ref(false)
 const showJsonImport = ref(false)
 const jsonImportText = ref('')
+const assetUploading = ref(false)
 const flowCanvasRef = ref<InstanceType<typeof RuleFlowCanvas> | null>(null)
 const builderMainRef = ref<HTMLElement | null>(null)
 const isFlowFullscreen = ref(false)
@@ -223,6 +329,7 @@ const workspaces: { key: WorkspaceKey; label: string }[] = [
   { key: 'cardsetCompare', label: '牌型比较流程' },
   { key: 'match', label: '对局流程' },
   { key: 'settlement', label: '结算流程' },
+  { key: 'assets', label: '牌面与背景自定义' },
 ]
 
 const steps = [
@@ -241,6 +348,7 @@ const activeComparison = computed(() => {
 })
 
 const objectPool = computed(() => createRuleObjectPool(design))
+const cardFaceSlots = computed(() => getRuleCardFaceSlots(design))
 
 const methodEntries = computed(() => {
   return Object.values(design.classes).flatMap(classDraft => {
@@ -283,6 +391,10 @@ const activeFlowScope = computed<FlowScope>(() => {
 })
 
 const activeGraph = computed<FlowGraphDraft | null>(() => {
+  if (activeWorkspace.value === 'assets') {
+    return null
+  }
+
   if (activeWorkspace.value === 'settlement') {
     return design.endFlow
   }
@@ -356,6 +468,26 @@ const validations = computed(() => validateRuleDesign(design))
 
 const getCardsetName = (cardsetId: string) => {
   return design.cardsets.find(cardset => cardset.id === cardsetId)?.name || '未选择'
+}
+
+const resolveImageUrl = (url: string) => {
+  if (!url) return ''
+  if (/^(https?:|data:)/i.test(url)) {
+    return url
+  }
+  return getApiUrl(url)
+}
+
+const formatCardFaceLabel = (properties: Record<string, number>) => {
+  const cardProperties = design.classes.card?.defaultProperties || []
+
+  return Object.entries(properties)
+    .map(([name, value]) => {
+      const property = cardProperties.find(item => item.name === name)
+      const enumLabel = property?.config?.find(option => Number(option.value) === Number(value))?.display
+      return `${name}:${enumLabel || value}`
+    })
+    .join(' / ')
 }
 
 watch(activeWorkspace, () => {
@@ -804,6 +936,7 @@ const applyDesign = (nextDesign: ReturnType<typeof createInitialDesign>) => {
   design.cardsetComparisons = nextDesign.cardsetComparisons
   design.matchFlow = nextDesign.matchFlow
   design.endFlow = nextDesign.endFlow
+  design.assets = nextDesign.assets
   activeCardsetId.value = design.cardsets[0]?.id || ''
   activeComparisonId.value = design.cardsetComparisons[0]?.id || null
   activeMethodClassName.value = null
@@ -869,6 +1002,79 @@ const persistDraft = async (showError = true) => {
     ElMessage.error(result.message || '规则草稿保存失败')
   }
   return ''
+}
+
+const ensureDraftForAssetUpload = async () => {
+  if (draftId.value) {
+    return draftId.value
+  }
+
+  const savedDraftId = await persistDraft()
+  if (savedDraftId && (!route.params.draftId || route.params.draftId === 'new')) {
+    await router.replace(`/creation-center/${encodeURIComponent(savedDraftId)}`)
+  }
+  return savedDraftId
+}
+
+const uploadAssetFile = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+
+  if (!file || isReadonly.value) {
+    return ''
+  }
+
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+    ElMessage.error('仅支持 png / jpeg / webp 格式')
+    return ''
+  }
+
+  if (file.size > 4 * 1024 * 1024) {
+    ElMessage.error('规则图片不能超过 4MB')
+    return ''
+  }
+
+  const savedDraftId = await ensureDraftForAssetUpload()
+  if (!savedDraftId) {
+    return ''
+  }
+
+  assetUploading.value = true
+  const result = await ruleApi.uploadRuleImage(savedDraftId, file)
+  assetUploading.value = false
+
+  if (!result.success || !result.data?.imageUrl) {
+    ElMessage.error(result.message || '图片上传失败')
+    return ''
+  }
+
+  return result.data.imageUrl
+}
+
+const uploadGlobalAsset = async (event: Event, target: 'cardBack' | 'background') => {
+  const imageUrl = await uploadAssetFile(event)
+  if (!imageUrl) {
+    return
+  }
+
+  design.assets[target] = imageUrl
+  await persistDraft(false)
+  ElMessage.success('图片已上传')
+}
+
+const uploadCardFaceAsset = async (event: Event, key: string, properties: Record<string, number>) => {
+  const imageUrl = await uploadAssetFile(event)
+  if (!imageUrl) {
+    return
+  }
+
+  design.assets.cardFaces[key] = {
+    properties: { ...properties },
+    imageUrl,
+  }
+  await persistDraft(false)
+  ElMessage.success('牌面图片已上传')
 }
 
 const validateBeforeSubmit = () => {
@@ -1118,6 +1324,195 @@ const openTutorial = () => {
   min-height: 0;
   overflow: hidden;
   padding: 28px;
+}
+
+.asset-customizer {
+  grid-column: 1 / -1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 28px;
+  background: #f8f9fc;
+}
+
+.asset-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.asset-header h2 {
+  margin: 0 0 8px;
+  color: #252633;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.asset-header p {
+  margin: 0;
+  color: #566070;
+  font-size: 14px;
+}
+
+.asset-header span {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border: 1px solid #d8dce5;
+  border-radius: 8px;
+  background: #fff;
+  color: #2a3040;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.global-assets {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(360px, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.asset-upload-card,
+.card-face-item {
+  border: 1px solid #dfe3ec;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.asset-upload-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+}
+
+.asset-upload-card.wide-preview {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 320px) auto auto;
+}
+
+.asset-upload-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.asset-upload-info strong,
+.card-face-meta strong {
+  color: #252633;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.asset-upload-info span,
+.card-face-meta span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.asset-preview,
+.card-face-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px dashed #cfd5e3;
+  border-radius: 8px;
+  background: #f3f5f9;
+  color: #737b8f;
+  font-size: 12px;
+}
+
+.asset-preview img,
+.card-face-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-back-preview {
+  width: 64px;
+  height: 92px;
+}
+
+.background-preview {
+  width: 100%;
+  height: 112px;
+}
+
+.asset-upload-button,
+.asset-clear-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid #cfd5e3;
+  border-radius: 8px;
+  background: #fff;
+  color: #252633;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.asset-upload-button:hover,
+.asset-clear-button:hover {
+  border-color: #afa6e8;
+  background: #f5f2ff;
+}
+
+.asset-upload-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.asset-upload-button input {
+  display: none;
+}
+
+.asset-upload-button.compact,
+.asset-clear-button.compact {
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.card-face-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.card-face-item {
+  display: grid;
+  grid-template-rows: 150px auto auto;
+  gap: 10px;
+  padding: 12px;
+}
+
+.card-face-preview {
+  width: 100%;
+  height: 150px;
+}
+
+.card-face-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.card-face-meta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-row-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .method-empty-state {
