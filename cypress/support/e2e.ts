@@ -5,6 +5,7 @@ Cypress.on('uncaught:exception', () => false)
 beforeEach(() => {
   cy.clearCookies()
   cy.clearLocalStorage()
+  cy.clearAllSessionStorage()
   cy.intercept('https://www.gravatar.com/**', {
     statusCode: 200,
     body: '',
@@ -15,4 +16,5 @@ beforeEach(() => {
 afterEach(() => {
   cy.clearCookies()
   cy.clearLocalStorage()
+  cy.clearAllSessionStorage()
 })

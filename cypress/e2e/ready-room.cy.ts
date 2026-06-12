@@ -1,5 +1,7 @@
 /// <reference types="cypress" />
 
+import { stubRoomApis, visitAs } from './helpers'
+
 describe('ReadyRoomView 房间准备页面测试', () => {
   // 房间信息显示测试组
   describe('房间信息显示', () => {
@@ -9,14 +11,16 @@ describe('ReadyRoomView 房间准备页面测试', () => {
       cy.clearLocalStorage()
       
       // 创建房间
-      cy.visit('/create-room', { timeout: 60000 })
-      cy.contains('h1', 'Create Room', { timeout: 10000 }).should('be.visible')
-      cy.contains('Room Settings', { timeout: 10000 }).should('be.visible')
-      cy.contains('Classic Rules (4 players)', { timeout: 10000 }).should('be.visible')
-      cy.contains('button', 'Create Room').should('be.enabled').click()
+      stubRoomApis()
+      visitAs('/create-room')
+      cy.contains('h1', '创建房间', { timeout: 10000 }).should('be.visible')
+      cy.contains('房间设置', { timeout: 10000 }).should('be.visible')
+      cy.contains('Classic Demo（2人）', { timeout: 10000 }).should('be.visible')
+      cy.contains('button', '创建房间').should('be.enabled').click()
+      cy.wait('@createRoom')
       
       // 等待跳转和页面加载
-      cy.location('pathname', { timeout: 15000 }).should('match', /^\/game\/[A-Z0-9]{6}$/)
+      cy.location('pathname', { timeout: 15000 }).should('eq', '/game/ABC123')
       cy.get('.room-eyebrow', { timeout: 10000 }).should('contain', 'Ready Room')
       cy.get('.room-summary', { timeout: 10000 }).should('be.visible')
       cy.get('.players-grid', { timeout: 10000 }).should('be.visible')
@@ -32,7 +36,7 @@ describe('ReadyRoomView 房间准备页面测试', () => {
     })
 
     it('显示房间号和规则名称', () => {
-      cy.get('.summary-value').contains('Classic Rules')
+      cy.get('.summary-value').contains('Classic Demo')
     })
   })
 
@@ -44,14 +48,16 @@ describe('ReadyRoomView 房间准备页面测试', () => {
       cy.clearLocalStorage()
       
       // 创建房间
-      cy.visit('/create-room', { timeout: 60000 })
-      cy.contains('h1', 'Create Room', { timeout: 10000 }).should('be.visible')
-      cy.contains('Room Settings', { timeout: 10000 }).should('be.visible')
-      cy.contains('Classic Rules (4 players)', { timeout: 10000 }).should('be.visible')
-      cy.contains('button', 'Create Room').should('be.visible').click()
+      stubRoomApis()
+      visitAs('/create-room')
+      cy.contains('h1', '创建房间', { timeout: 10000 }).should('be.visible')
+      cy.contains('房间设置', { timeout: 10000 }).should('be.visible')
+      cy.contains('Classic Demo（2人）', { timeout: 10000 }).should('be.visible')
+      cy.contains('button', '创建房间').should('be.visible').click()
+      cy.wait('@createRoom')
       
       // 等待跳转和页面加载
-      cy.location('pathname', { timeout: 15000 }).should('match', /^\/game\/[A-Z0-9]{6}$/)
+      cy.location('pathname', { timeout: 15000 }).should('eq', '/game/ABC123')
       cy.get('.room-eyebrow', { timeout: 10000 }).should('contain', 'Ready Room')
       cy.get('.room-summary', { timeout: 10000 }).should('be.visible')
       cy.get('.players-grid', { timeout: 10000 }).should('be.visible')
@@ -79,14 +85,16 @@ describe('ReadyRoomView 房间准备页面测试', () => {
       cy.clearLocalStorage()
       
       // 创建房间
-      cy.visit('/create-room', { timeout: 60000 })
-      cy.contains('h1', 'Create Room', { timeout: 10000 }).should('be.visible')
-      cy.contains('Room Settings', { timeout: 10000 }).should('be.visible')
-      cy.contains('Classic Rules (4 players)', { timeout: 10000 }).should('be.visible')
-      cy.contains('button', 'Create Room').should('be.visible').click()
+      stubRoomApis()
+      visitAs('/create-room')
+      cy.contains('h1', '创建房间', { timeout: 10000 }).should('be.visible')
+      cy.contains('房间设置', { timeout: 10000 }).should('be.visible')
+      cy.contains('Classic Demo（2人）', { timeout: 10000 }).should('be.visible')
+      cy.contains('button', '创建房间').should('be.visible').click()
+      cy.wait('@createRoom')
       
       // 等待跳转和页面加载
-      cy.location('pathname', { timeout: 15000 }).should('match', /^\/game\/[A-Z0-9]{6}$/)
+      cy.location('pathname', { timeout: 15000 }).should('eq', '/game/ABC123')
       cy.get('.room-eyebrow', { timeout: 10000 }).should('contain', 'Ready Room')
       cy.get('.room-summary', { timeout: 10000 }).should('be.visible')
       cy.get('.players-grid', { timeout: 10000 }).should('be.visible')
@@ -111,12 +119,15 @@ describe('ReadyRoomView 房间准备页面测试', () => {
       
       // 注意：这里需要先创建一个房间，然后用另一个用户加入
       // 简化处理：直接加入一个已存在的测试房间
-      cy.visit('/join-room', { timeout: 60000 })
+      stubRoomApis()
+      visitAs('/join-room')
       cy.get('.join-room-input input', { timeout: 10000 }).should('be.visible').type('123456')
       cy.contains('button', '加入房间').should('be.enabled').click()
+      cy.wait('@checkPassword')
       cy.contains('密码', { timeout: 10000 }).should('be.visible')
       cy.get('.join-room-input input').type('abc123')
       cy.contains('button', '加入房间').should('be.enabled').click()
+      cy.wait('@joinRoom')
       
       // 等待跳转和页面加载
       cy.location('pathname', { timeout: 15000 }).should('eq', '/game/123456')
@@ -139,14 +150,16 @@ describe('ReadyRoomView 房间准备页面测试', () => {
       cy.clearLocalStorage()
       
       // 创建房间
-      cy.visit('/create-room', { timeout: 60000 })
-      cy.contains('h1', 'Create Room', { timeout: 10000 }).should('be.visible')
-      cy.contains('Room Settings', { timeout: 10000 }).should('be.visible')
-      cy.contains('Classic Rules (4 players)', { timeout: 10000 }).should('be.visible')
-      cy.contains('button', 'Create Room').should('be.visible').click()
+      stubRoomApis()
+      visitAs('/create-room')
+      cy.contains('h1', '创建房间', { timeout: 10000 }).should('be.visible')
+      cy.contains('房间设置', { timeout: 10000 }).should('be.visible')
+      cy.contains('Classic Demo（2人）', { timeout: 10000 }).should('be.visible')
+      cy.contains('button', '创建房间').should('be.visible').click()
+      cy.wait('@createRoom')
       
       // 等待跳转和页面加载
-      cy.location('pathname', { timeout: 15000 }).should('match', /^\/game\/[A-Z0-9]{6}$/)
+      cy.location('pathname', { timeout: 15000 }).should('eq', '/game/ABC123')
       cy.get('.room-eyebrow', { timeout: 10000 }).should('contain', 'Ready Room')
       cy.get('.room-summary', { timeout: 10000 }).should('be.visible')
       cy.get('.players-grid', { timeout: 10000 }).should('be.visible')
