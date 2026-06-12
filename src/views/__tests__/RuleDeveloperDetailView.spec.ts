@@ -78,6 +78,7 @@ const stubs = {
   ElEmpty: { props: ['description'], template: '<div class="empty">{{ description }}</div>' },
   ElTag: { template: '<span class="tag"><slot /></span>' },
   ElRate: { props: ['modelValue'], template: '<span class="rate">{{ modelValue }}</span>' },
+  ReportButton: true,
 }
 
 function mountView() {

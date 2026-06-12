@@ -82,6 +82,7 @@ const stubs = {
   ElUpload: { template: '<div class="upload"><slot /></div>' },
   ElCarousel: { template: '<div class="carousel"><slot /></div>' },
   ElCarouselItem: { template: '<div class="carousel-item"><slot /></div>' },
+  ReportButton: true,
 }
 
 function mountView() {
