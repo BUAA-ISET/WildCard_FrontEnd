@@ -1,8 +1,10 @@
 /// <reference types="cypress" />
 
+import { visitAs } from './helpers'
+
 describe('规则构建器测试', () => {
   beforeEach(() => {
-    cy.visit('/creation-center', { timeout: 60000 })
+    visitAs('/creation-center/new')
     cy.intercept('https://www.gravatar.com/**', { statusCode: 200, body: '', headers: { 'Content-Type': 'image/png' } })
   })
 
@@ -57,9 +59,9 @@ describe('规则构建器测试', () => {
     })
 
     it('显示对象摘要', () => {
-      cy.contains('.object-summary', '玩家对象').should('be.visible')
-      cy.contains('.object-summary', '牌对象').should('be.visible')
-      cy.contains('.object-summary', '牌桌对象').should('be.visible')
+      cy.contains('.object-summary', '玩家对象').scrollIntoView().should('be.visible')
+      cy.contains('.object-summary', '牌对象').scrollIntoView().should('be.visible')
+      cy.contains('.object-summary', '牌桌对象').scrollIntoView().should('be.visible')
     })
   })
 
