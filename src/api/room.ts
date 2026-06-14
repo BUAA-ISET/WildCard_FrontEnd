@@ -229,14 +229,14 @@ function getCurrentPlayerProfile() {
     return {
       id: currentUser.id,
       username: currentUser.username,
-      avatar: currentUser.avatar || DEFAULT_AVATAR,
+      avatar: currentUser.avatar || '',
     }
   }
 
   return {
     id: getGuestPlayerId(),
     username: getGuestUsername(),
-    avatar: DEFAULT_AVATAR,
+    avatar: '',
   }
 }
 
@@ -308,7 +308,7 @@ function normalizePlayer(player: BackendPlayer): Player {
   return {
     id: String(player.id || ''),
     username: player.username || '',
-    avatar: player.avatar || DEFAULT_AVATAR,
+    avatar: player.avatar || '',
     isReady: Boolean(player.isReady ?? player.is_ready),
     joinedAt: typeof player.joinedAt === 'number'
       ? player.joinedAt

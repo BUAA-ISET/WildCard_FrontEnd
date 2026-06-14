@@ -93,9 +93,11 @@ async function submit() {
 
   submitting.value = true
   const result = await reportApi.submit({
-    reporterId: userStore.id,
-    reporterName: userStore.username,
-    reporterAvatar: userStore.avatar,
+    reporter: {
+      id: userStore.id,
+      name: userStore.username,
+      avatar: userStore.avatar,
+    },
     targetType: props.targetType,
     targetId: props.targetId,
     reason: trimmedReason,

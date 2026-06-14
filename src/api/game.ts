@@ -113,7 +113,12 @@ type BackendPendingAction = {
 
 type BackendGamePlayer = {
     id?: string
+    username?: string
+    avatar?: string
     properties?: Record<string, number>
+    cardCount?: number
+    online?: boolean
+    finished?: boolean
 }
 
 type BackendGameSession = {
@@ -279,12 +284,11 @@ function toSnapshot(session: BackendGameSession, room: BackendRoom | null): Game
         deadlineAt: pending?.timer ? Date.now() + Number(pending.timer) * 1000 : null,
         players: players.map((player) => {
             const playerId = String(player.id || '')
-            const roomPlayer = room?.players?.find((item) => item.id === playerId)
 
             return {
                 id: playerId,
-                username: roomPlayer?.username || `Player ${playerId.slice(0, 6)}`,
-                avatar: roomPlayer?.avatar || '',
+                username: player.username || `Player ${playerId.slice(0, 6)}`,
+                avatar: player.avatar || '',
                 cardCount: getPlayerHandCount(player, hands),
                 online: true,
                 finished: winnerIds.includes(playerId),
@@ -308,6 +312,23 @@ function toSnapshot(session: BackendGameSession, room: BackendRoom | null): Game
     }
 }
 
+function normalizeSnapshotPlayers(snapshot: GameSnapshot): GameSnapshot {
+    return {
+        ...snapshot,
+        players: (snapshot.players as unknown as BackendGamePlayer[]).map((player) => {
+            const playerId = String(player.id || '')
+            return {
+                ...player,
+                id: playerId,
+                username: player.username || `Player ${playerId.slice(0, 6)}`,
+                avatar: player.avatar || '',
+                cardCount: Number(player.cardCount ?? 0),
+                online: player.online ?? true,
+            }
+        }),
+    }
+}
+
 async function normalizeGameResult(
     result: BackendApiResult<BackendGameSession>,
     roomCodeHint?: string,
@@ -320,9 +341,10 @@ async function normalizeGameResult(
     }
 
     if (result.data.sessionId && Array.isArray(result.data.handCards)) {
+        const snapshot = result.data as unknown as GameSnapshot
         return {
             success: true,
-            data: result.data as unknown as GameSnapshot,
+            data: normalizeSnapshotPlayers(snapshot),
         }
     }
 
