@@ -79,6 +79,7 @@ const defaultMockAccounts: MockAccount[] = [
     email: 'test@mail.com',
     avatar: '',
     password: 'password123',
+    role: 'admin',
   },
 ]
 
