@@ -29,6 +29,7 @@
             :src="resolveAvatarUrl(player.avatar)"
             :alt="player.name"
             class="player-avatar"
+            @error="useDefaultAvatar"
           >
           <div class="mini-back" :style="backCardStyle">
             <div v-if="!hasCustomBackImage" class="mini-back-inner"></div>
@@ -83,6 +84,7 @@
           :src="resolveAvatarUrl(currentPlayer?.avatar)"
           :alt="currentPlayer?.username || 'User'"
           class="user-avatar"
+          @error="useDefaultAvatar"
         >
         <div class="turn-text">{{ turnText }}</div>
       </div>
@@ -118,6 +120,7 @@ import { getApiUrl } from '../api/config'
 import { roomApi } from '../api/room'
 import { replayApi } from '../api/replay'
 import { resolveAvatarUrl } from '../utils/avatar'
+import defaultAvatarUrl from '../assets/default-avatar.svg'
 import ReportButton from '../components/report/ReportButton.vue'
 
 type CardStyle = {
@@ -316,6 +319,15 @@ const battlePageStyle = computed(() => {
 function themeClass(suit: string) {
   const colorClass = suit === 'H' || suit === 'D' ? 'red-card' : 'black-card'
   return `${colorClass} theme-${cardStyle.theme}`
+}
+
+function useDefaultAvatar(event: Event) {
+  const image = event.target as HTMLImageElement
+  if (image.dataset.fallbackAvatar === '1') {
+    return
+  }
+  image.dataset.fallbackAvatar = '1'
+  image.src = defaultAvatarUrl
 }
 
 function toggleCard(cardId: string) {
