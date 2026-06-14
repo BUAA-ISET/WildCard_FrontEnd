@@ -53,6 +53,22 @@ describe('审核后台 E2E', () => {
     stubApiPreflight()
     stubExternalImages()
     cy.intercept('GET', /\/api\/admin\/rules\/pending$/, apiResponse({ success: true, data: pendingDrafts })).as('listPendingRules')
+    cy.intercept('GET', /\/api\/admin\/rules\/drafts\/review-draft-1$/, apiResponse({
+      success: true,
+      data: {
+        id: 'review-draft-1',
+        name: '待审 War 规则',
+        playerCount: 2,
+        description: '需要审核的拼点规则',
+        status: 'pendingReview',
+        updatedAt: Date.parse('2026-06-10T13:00:00Z'),
+        createdAt: Date.parse('2026-06-10T12:30:00Z'),
+        design: { nodes: [{ id: 'start' }], edges: [] },
+        introduction: '每轮比较牌面点数。',
+        coverUrl: '/static/rule-images/review-cover.png',
+        screenshotUrls: ['/static/rule-images/review-shot.png'],
+      },
+    })).as('getPreviewDraft')
     cy.intercept('POST', /\/api\/admin\/rules\/review-draft-1\/approve$/, apiResponse({
       success: true,
       data: { ruleId: 'published-rule-1', version: 1, status: 'published' },
@@ -99,6 +115,22 @@ describe('审核后台 E2E', () => {
       reason: '玩法说明不完整，请补充结算示例',
     })
     cy.contains('规则已驳回').should('be.visible')
+  })
+
+  it('管理员可以进入规则可视化只读预览', () => {
+    visitAs('/admin/rules-review', 'admin')
+    cy.wait('@listPendingRules')
+
+    cy.contains('.pending-row', '待审 War 规则').click()
+    cy.contains('button', '可视化预览').click()
+
+    cy.wait('@getPreviewDraft')
+    cy.location('pathname').should('eq', '/admin/rules-review/preview/review-draft-1')
+    cy.get('.rule-builder-page').should('have.class', 'readonly-mode')
+    cy.contains('.readonly-banner', '只读预览模式').should('be.visible')
+    cy.contains('button', '保存草稿').should('not.exist')
+    cy.contains('button', '提交审核').should('not.exist')
+    cy.contains('button', '导入 JSON').should('not.exist')
   })
 
   it('管理员可以筛选举报并处理对局行为举报', () => {
