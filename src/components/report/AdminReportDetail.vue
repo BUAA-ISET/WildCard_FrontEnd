@@ -16,7 +16,10 @@
         <div>
           <dt>举报人</dt>
           <dd class="reporter-cell">
-            <img v-if="report.reporterAvatar" :src="report.reporterAvatar" :alt="report.reporterName">
+            <img
+              :src="resolveAvatarUrl(report.reporterAvatar)"
+              :alt="report.reporterName || report.reporterId"
+            >
             <span>{{ report.reporterName || report.reporterId }}</span>
           </dd>
         </div>
@@ -84,6 +87,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Report, ReportAction } from '../../api/report'
+import { resolveAvatarUrl } from '../../utils/avatar'
 
 const props = defineProps<{
   report: Report | null

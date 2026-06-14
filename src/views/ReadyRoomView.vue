@@ -38,7 +38,7 @@
           @keydown.enter.prevent="toggleSelectedPlayer(player.id)"
         >
           <img
-            :src="player.avatar || DEFAULT_AVATAR"
+            :src="resolveAvatarUrl(player.avatar)"
             :alt="player.username"
             class="player-avatar"
           />
@@ -97,8 +97,9 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
-import { roomApi, DEFAULT_AVATAR, getRoomEntryPath, type Room } from '../api/room'
+import { roomApi, getRoomEntryPath, type Room } from '../api/room'
 import { useUserStore } from '../stores/userStore'
+import { resolveAvatarUrl } from '../utils/avatar'
 import ReportButton from '../components/report/ReportButton.vue'
 
 const route = useRoute()
