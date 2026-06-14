@@ -96,6 +96,10 @@ describe('规则市场', () => {
     cy.intercept('GET', /\/api\/rules\/published\/[^/]+\/rooms$/, apiResponse({ success: true, data: rooms })).as('listRuleRooms')
     cy.intercept('GET', /\/api\/rules\/developers\/system\/rules(?:\?.*)?$/, apiResponse({ success: true, data: [rules[0]] })).as('listDeveloperRules')
     cy.intercept('GET', /\/api\/rules\/published\/builtin-war-rule$/, apiResponse({ success: true, data: detail })).as('getRuleDetail')
+    cy.intercept('POST', /\/api\/rules\/reviews\/images$/, apiResponse({
+      success: true,
+      data: { imageUrl: '/static/review-images/review-uploaded.png' },
+    })).as('uploadReviewImage')
     cy.intercept('POST', /\/api\/rules\/published\/builtin-war-rule\/reviews$/, apiResponse({
       success: true,
       data: {
@@ -153,6 +157,54 @@ describe('规则市场', () => {
       name: 'War 战争副本',
     })
     cy.location('pathname').should('eq', '/creation-center/forked-war-rule')
+  })
+
+  it('详情页会解析短链接封面，并在提交带图评论前先上传评论图片', () => {
+    cy.intercept('GET', /\/api\/rules\/published\/builtin-war-rule$/, apiResponse({
+      success: true,
+      data: {
+        ...detail,
+        coverUrl: '/static/rule-images/cover.png',
+        screenshots: ['/static/rule-images/shot.png'],
+      },
+    })).as('getRuleDetailWithMedia')
+    cy.intercept('POST', /\/api\/rules\/published\/builtin-war-rule\/reviews$/, apiResponse({
+      success: true,
+      data: {
+        id: 'review-2',
+        authorName: '我',
+        authorAvatar: '/me.png',
+        rating: 5,
+        content: '带图评论',
+        imageUrl: '/static/review-images/review-uploaded.png',
+        createdAt: Date.parse('2026-05-30T00:00:00Z'),
+      },
+    })).as('postReviewWithImage')
+
+    visitAsLoggedIn('/rule-market/builtin-war-rule')
+    cy.wait('@getRuleDetailWithMedia')
+
+    cy.get('.screenshot-panel img').should('have.attr', 'src').and('include', '/static/rule-images/cover.png')
+    cy.get('.screenshot-single').should('have.attr', 'src').and('include', '/static/rule-images/shot.png')
+
+    cy.get('.upload-row input[type=file]').selectFile({
+      contents: Cypress.Buffer.from('image-bytes'),
+      fileName: 'review.png',
+      mimeType: 'image/png',
+    }, { force: true })
+    cy.contains('.upload-name', 'review.png').should('exist')
+    cy.get('.upload-preview').should('exist')
+
+    cy.get('.review-form textarea').type('带图评论')
+    cy.contains('button', '提交评论').click()
+
+    cy.wait('@uploadReviewImage')
+    cy.wait('@postReviewWithImage').its('request.body').should('deep.include', {
+      rating: 5,
+      content: '带图评论',
+      imageUrl: '/static/review-images/review-uploaded.png',
+    })
+    cy.contains('.review-item', '带图评论').should('be.visible')
   })
 
   it('详情页可以提交评论并跳转到快速用规则创建房间', () => {
