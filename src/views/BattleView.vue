@@ -25,7 +25,11 @@
           @click="toggleSelectedOpponent(player.id)"
           @keydown.enter.prevent="toggleSelectedOpponent(player.id)"
         >
-          <div class="player-avatar">{{ player.name.slice(0, 1) }}</div>
+          <img
+            :src="resolveAvatarUrl(player.avatar)"
+            :alt="player.name"
+            class="player-avatar"
+          >
           <div class="mini-back" :style="backCardStyle">
             <div v-if="!hasCustomBackImage" class="mini-back-inner"></div>
           </div>
@@ -75,7 +79,11 @@
       </div>
 
       <div class="user-info" :class="{ active: currentTurnPlayerId === currentPlayerId }">
-        <div class="user-avatar">U</div>
+        <img
+          :src="resolveAvatarUrl(currentPlayer?.avatar)"
+          :alt="currentPlayer?.username || 'User'"
+          class="user-avatar"
+        >
         <div class="turn-text">{{ turnText }}</div>
       </div>
 
@@ -109,6 +117,7 @@ import { gameApi, type GameCard, type GameSnapshot } from '../api/game'
 import { getApiUrl } from '../api/config'
 import { roomApi } from '../api/room'
 import { replayApi } from '../api/replay'
+import { resolveAvatarUrl } from '../utils/avatar'
 import ReportButton from '../components/report/ReportButton.vue'
 
 type CardStyle = {
@@ -167,6 +176,9 @@ const cardStyle = readCardStyle()
 
 const currentTurnPlayerId = computed(() => snapshot.value?.currentPlayerId || '')
 const currentActionId = computed(() => snapshot.value?.pendingAction?.actionId || '')
+const currentPlayer = computed(() => (
+  snapshot.value?.players.find((player) => player.id === currentPlayerId) || null
+))
 
 const opponents = computed(() => (
   snapshot.value?.players
@@ -174,6 +186,7 @@ const opponents = computed(() => (
     .map((player) => ({
       id: player.id,
       name: player.username || 'Player',
+      avatar: player.avatar,
       cardCount: player.cardCount,
     })) || []
 ))
@@ -566,13 +579,10 @@ onBeforeUnmount(() => {
 .user-avatar {
   width: 72px;
   height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   border-radius: 50%;
   background: #dadada;
-  color: #111;
-  font-size: 34px;
+  object-fit: cover;
 }
 
 .mini-back {

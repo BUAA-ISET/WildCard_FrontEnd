@@ -55,7 +55,11 @@
           :class="{ active: currentFrame.currentPlayerId === player.id }"
         >
           <div class="player-line">
-            <div class="player-avatar">{{ player.username.slice(0, 1) }}</div>
+            <img
+              :src="resolveAvatarUrl(player.avatar)"
+              :alt="player.username"
+              class="player-avatar"
+            >
             <div>
               <strong>{{ player.username }}</strong>
               <span>{{ player.id === currentFrame.currentPlayerId ? '当前回合' : '等待中' }}</span>
@@ -105,6 +109,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { replayApi, type MatchReplay } from '../api/replay'
+import { resolveAvatarUrl } from '../utils/avatar'
 
 type CardStyle = {
   fontFamily: string
@@ -345,13 +350,10 @@ h1 {
 .player-avatar {
   width: 48px;
   height: 48px;
-  display: grid;
-  place-items: center;
+  display: block;
   border-radius: 50%;
   background: #dadde5;
-  color: #1a1f2a;
-  font-size: 1.2rem;
-  font-weight: 800;
+  object-fit: cover;
 }
 
 .timeline-panel {
