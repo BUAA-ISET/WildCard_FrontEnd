@@ -13,6 +13,12 @@ export interface ReportTargetUser {
   avatar?: string
 }
 
+export interface ReportUser {
+  id: string
+  name: string
+  avatar: string
+}
+
 export interface ReportTargetRule {
   id: string
   name?: string
@@ -44,8 +50,12 @@ export interface ReportContext {
 
 export interface Report {
   id: string
-  reporterId: string
-  reporterName: string
+  reporter?: ReportUser
+  /** @deprecated Backend must return reporter.avatar. */
+  reporterId?: string
+  /** @deprecated Backend must return reporter.avatar. */
+  reporterName?: string
+  /** @deprecated Backend must return reporter.avatar. */
   reporterAvatar?: string
   targetType: ReportTargetType
   targetId: string
@@ -72,8 +82,12 @@ export interface ReportActionLog {
 }
 
 export interface SubmitReportPayload {
-  reporterId: string
-  reporterName: string
+  reporter?: ReportUser
+  /** @deprecated Use reporter. */
+  reporterId?: string
+  /** @deprecated Use reporter. */
+  reporterName?: string
+  /** @deprecated Use reporter. */
   reporterAvatar?: string
   targetType: ReportTargetType
   targetId: string
@@ -138,11 +152,14 @@ function writeLocalReports(reports: Report[]) {
 
 function createLocalReport(payload: SubmitReportPayload): Report {
   const now = Date.now()
+  const reporter = payload.reporter || {
+    id: payload.reporterId || '',
+    name: payload.reporterName || '',
+    avatar: payload.reporterAvatar || '',
+  }
   return {
     id: `report-${now}-${Math.random().toString(36).slice(2, 8)}`,
-    reporterId: payload.reporterId,
-    reporterName: payload.reporterName,
-    reporterAvatar: payload.reporterAvatar,
+    reporter,
     targetType: payload.targetType,
     targetId: payload.targetId,
     targetUser: payload.targetType === 'user' || payload.targetType === 'player_behavior'
@@ -157,6 +174,14 @@ function createLocalReport(payload: SubmitReportPayload): Report {
     createdAt: now,
     updatedAt: now,
     context: payload.context,
+  }
+}
+
+export function getReportReporter(report: Report): ReportUser {
+  return report.reporter || {
+    id: report.reporterId || '',
+    name: report.reporterName || '',
+    avatar: report.reporterAvatar || '',
   }
 }
 
@@ -198,7 +223,7 @@ function filterLocalReports(params: ReportQuery = {}) {
       report.reason,
       report.details,
       report.context?.targetLabel,
-      report.reporterName,
+      getReportReporter(report).name,
       report.targetUser?.id,
       report.targetUser?.name,
       report.targetRule?.id,
@@ -302,10 +327,11 @@ function saveLocalAction(reportId: string, payload: ReportActionPayload): ApiRes
     })
 
     const banDays = payload.params?.banDays
+    const punishmentAction = payload.action as ReportPunishment['action']
     report.status = 'resolved'
     report.punishment = {
       id: punishmentId,
-      action: payload.action,
+      action: punishmentAction,
       scope,
       active: true,
       banDays,

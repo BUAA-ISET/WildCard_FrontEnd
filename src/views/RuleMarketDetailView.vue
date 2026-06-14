@@ -99,10 +99,10 @@
         </div>
         <el-empty v-if="rule.reviews.length === 0" description="暂无评论" />
         <article v-for="review in rule.reviews" v-else :key="review.id" class="review-item">
-          <img :src="review.authorAvatar" :alt="review.authorName" class="review-avatar">
+          <img :src="resolveAvatarUrl(getReviewAuthor(review).avatar)" :alt="getReviewAuthor(review).name" class="review-avatar">
           <div>
             <div class="review-meta">
-              <strong>{{ review.authorName }}</strong>
+              <strong>{{ getReviewAuthor(review).name }}</strong>
               <el-rate :model-value="review.rating" disabled size="small" />
               <span>{{ formatDate(review.createdAt) }}</span>
               <ReportButton
@@ -129,9 +129,10 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
-import { marketApi, resolveDeveloperAvatar, type PublishedRuleDetail } from '../api/market'
+import { getReviewAuthor, marketApi, resolveDeveloperAvatar, type PublishedRuleDetail } from '../api/market'
 import { getApiUrl } from '../api/config'
 import { useRuleFork } from '../composables/useRuleFork'
+import { resolveAvatarUrl } from '../utils/avatar'
 import ReportButton from '../components/report/ReportButton.vue'
 
 const route = useRoute()

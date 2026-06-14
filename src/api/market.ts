@@ -3,12 +3,13 @@ import { getApiUrl, shouldUseMarketMockApi } from './config'
 import { AUTH_TOKEN_STORAGE_KEY } from '../utils/storageNamespace'
 import defaultAvatarUrl from '../assets/default-avatar.svg'
 import wildcardLogoUrl from '../assets/logo.svg'
+import { resolveAvatarUrl } from '../utils/avatar'
 
 const SYSTEM_DEVELOPER_ID = 'system'
 
 export function resolveDeveloperAvatar(developer: { id: string; avatar: string }): string {
   if (developer.avatar) {
-    return developer.avatar
+    return resolveAvatarUrl(developer.avatar)
   }
   if (developer.id === SYSTEM_DEVELOPER_ID) {
     return wildcardLogoUrl
@@ -37,8 +38,15 @@ export interface PublishedRuleSummary {
 
 export interface RuleReview {
   id: string
-  authorName: string
-  authorAvatar: string
+  author?: {
+    id: string
+    name: string
+    avatar: string
+  }
+  /** @deprecated Backend must return author.avatar. */
+  authorName?: string
+  /** @deprecated Backend must return author.avatar. */
+  authorAvatar?: string
   rating: number
   content: string
   imageUrl?: string
@@ -109,8 +117,11 @@ const mockRules: PublishedRuleDetail[] = [
     reviews: [
       {
         id: 'review-1',
-        authorName: '测试玩家',
-        authorAvatar: defaultAvatarUrl,
+        author: {
+          id: 'mock-reviewer',
+          name: '测试玩家',
+          avatar: '',
+        },
         rating: 5,
         content: '节奏很快，适合用来验证房间和对局流程。',
         createdAt: Date.now() - 1000 * 60 * 60 * 12,
@@ -159,6 +170,14 @@ function buildQuery(params: RuleQueryParams = {}) {
   }
   const query = searchParams.toString()
   return query ? `?${query}` : ''
+}
+
+export function getReviewAuthor(review: RuleReview) {
+  return review.author || {
+    id: '',
+    name: review.authorName || '',
+    avatar: review.authorAvatar || '',
+  }
 }
 
 export const marketApi = {
@@ -234,8 +253,11 @@ export const marketApi = {
           success: true,
           data: {
             id: `review-${Date.now()}`,
-            authorName: '我',
-            authorAvatar: defaultAvatarUrl,
+            author: {
+              id: 'current-user',
+              name: '我',
+              avatar: '',
+            },
             rating: payload.rating,
             content: payload.content,
             imageUrl: payload.imageUrl,
